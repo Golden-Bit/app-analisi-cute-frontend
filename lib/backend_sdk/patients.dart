@@ -66,7 +66,7 @@ class Anagrafica {
 class AnagraficaApi {
   final String baseUrl;
 
-  AnagraficaApi({this.baseUrl = "http://127.0.0.1:8002"});
+  AnagraficaApi({this.baseUrl = "http://34.13.153.241:8002"});
 
   // Recupera tutte le anagrafiche
   Future<List<Anagrafica>> getAnagrafiche() async {

@@ -38091,7 +38091,7 @@ A.X6.prototype={
 xR(a,b){return this.afb(a,b)},
 afb(a,b){var s=0,r=A.L(t.a),q,p=2,o,n,m,l,k,j,i,h,g,f
 var $async$xR=A.M(function(c,d){if(c===1){o=d
-s=p}while(true)switch(s){case 0:g=A.fX("http://127.0.0.1:8001/analyze_skin")
+s=p}while(true)switch(s){case 0:g=A.fX("http://34.13.153.241:8001/analyze_skin")
 p=4
 j=t.N
 i=A.ah(["Content-Type","application/json"],j,j)
@@ -38127,7 +38127,7 @@ A.Gw.prototype={
 q4(){var s=0,r=A.L(t.qL),q,p,o
 var $async$q4=A.M(function(a,b){if(a===1)return A.I(b,r)
 while(true)switch(s){case 0:s=3
-return A.E(A.aNU(A.fX("http://127.0.0.1:8002/anagrafiche")),$async$q4)
+return A.E(A.aNU(A.fX("http://34.13.153.241:8002/anagrafiche")),$async$q4)
 case 3:o=b
 if(o.b===200){p=J.iK(B.ck.ev(A.azZ(A.az8(o.e).c.a.h(0,"charset")).ev(o.w)),new A.X1(),t.k_)
 q=A.a_(p,!0,p.$ti.i("al.E"))
