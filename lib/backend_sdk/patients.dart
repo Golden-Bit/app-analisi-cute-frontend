@@ -3,17 +3,17 @@ import 'package:http/http.dart' as http;
 
 // Modello per l'anagrafica
 class Anagrafica {
-  final String? id;
-  final String nome;
-  final String cognome;
-  final String birthDate;
-  final String address;
-  final double peso;
-  final double altezza;
-  final String gender;
-  final List<String> skinTypes;
-  final List<String> issues;
-  final List<Map<String, dynamic>> analysisHistory;
+  String? id;
+  String nome;
+  String cognome;
+  String birthDate;
+  String address;
+  double peso;
+  double altezza;
+  String gender;
+  List<String> skinTypes;
+  List<String> issues;
+  List<Map<String, dynamic>> analysisHistory;
 
   Anagrafica({
     this.id,
@@ -66,7 +66,7 @@ class Anagrafica {
 class AnagraficaApi {
   final String baseUrl;
 
-  AnagraficaApi({this.baseUrl = "http://34.13.153.241:8002"});
+  AnagraficaApi({this.baseUrl = "https://www.goldbitweb.com/api3"});
 
   // Recupera tutte le anagrafiche
   Future<List<Anagrafica>> getAnagrafiche() async {

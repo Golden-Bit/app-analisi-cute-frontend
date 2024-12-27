@@ -1,3 +1,5 @@
+import 'package:app_analisi_cute/pages/edit_anagraphic/edit_anagraphic_page.dart';
+import 'package:app_analisi_cute/pages/new_anagraphic/new_anagraphic.dart';
 import 'package:flutter/material.dart';
 import 'package:app_analisi_cute/backend_sdk/patients.dart';
 import 'package:app_analisi_cute/pages/anagraphic_cards/components/anagraphic_card_viewer.dart';
@@ -5,13 +7,15 @@ import 'package:app_analisi_cute/pages/anagraphic_cards/components/anagraphic_ca
 class HoverableCard extends StatefulWidget {
   final String title;
   final String subtitle;
-  final Anagrafica anagrafica; // Oggetto completo dell'anagrafica
+  final Anagrafica anagrafica;
+  final VoidCallback onRefresh; // Callback per ricaricare la lista
 
   const HoverableCard({
     Key? key,
     required this.title,
     required this.subtitle,
     required this.anagrafica,
+    required this.onRefresh,
   }) : super(key: key);
 
   @override
@@ -45,6 +49,17 @@ class _HoverableCardState extends State<HoverableCard> {
                   context: context,
                   builder: (context) => AnagraficaView(anagrafica: widget.anagrafica),
                 );
+              } else if (value == 'Modifica') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EditAnagraficaPage(anagrafica: widget.anagrafica),
+                  ),
+                ).then((updatedAnagrafica) {
+                  if (updatedAnagrafica != null) {
+                    widget.onRefresh(); // Ricarica la lista delle anagrafiche
+                  }
+                });
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -77,20 +92,27 @@ class AnagrafichePage extends StatefulWidget {
 
 class _AnagrafichePageState extends State<AnagrafichePage> {
   final AnagraficaApi _api = AnagraficaApi();
-  List<Anagrafica> _anagrafiche = [];
+  List<Anagrafica> _allAnagrafiche = [];
+  List<Anagrafica> _filteredAnagrafiche = [];
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchAnagrafiche();
+    _searchController.addListener(_filterAnagrafiche);
   }
 
   Future<void> _fetchAnagrafiche() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       final anagrafiche = await _api.getAnagrafiche();
       setState(() {
-        _anagrafiche = anagrafiche;
+        _allAnagrafiche = anagrafiche;
+        _filteredAnagrafiche = anagrafiche;
         _isLoading = false;
       });
     } catch (e) {
@@ -103,6 +125,33 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
     }
   }
 
+  void _filterAnagrafiche() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredAnagrafiche = _allAnagrafiche.where((anagrafica) {
+        final fullName = '${anagrafica.nome} ${anagrafica.cognome}'.toLowerCase();
+        return fullName.contains(query);
+      }).toList();
+    });
+  }
+
+  void _createNewAnagrafica() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const NewAnagraficaPage(),
+      ),
+    ).then((_) {
+      _fetchAnagrafiche(); // Ricarica anagrafiche dopo la creazione
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,70 +161,85 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
           style: TextStyle(color: Colors.black),
         ),
         backgroundColor: Colors.white,
-                elevation: 4,
+        elevation: 4,
         shadowColor: Colors.grey.withOpacity(0.4),
         iconTheme: const IconThemeData(color: Colors.black),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: ElevatedButton.icon(
+              onPressed: _createNewAnagrafica,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Nuova Anagrafica',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // Barra di ricerca con filtri
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
-                // Campo di testo per la ricerca
-                // Campo di testo per la ricerca
-Expanded(
-  flex: 3,
-  child: TextField(
-    decoration: InputDecoration(
-      hintText: 'Cerca anagrafica...',
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(2), // Border radius ridotto a 2
-      ),
-      prefixIcon: const Icon(Icons.search),
-    ),
-  ),
-),
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Cerca anagrafica...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      prefixIcon: const Icon(Icons.search),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
-                // Pulsante per i filtri
-                // Pulsante per i filtri
-ElevatedButton.icon(
-  onPressed: () {
-    // Per ora, non implementa alcuna logica
-  },
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.black,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(2), // Border radius ridotto a 2
-    ),
-  ),
-  icon: const Icon(Icons.filter_list, color: Colors.white),
-  label: const Text(
-    'Filtri',
-    style: TextStyle(color: Colors.white),
-  ),
-),
-
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Logica per i filtri
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  icon: const Icon(Icons.filter_list, color: Colors.white),
+                  label: const Text(
+                    'Filtri',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          // Contenuto principale
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    itemCount: _anagrafiche.length,
-                    itemBuilder: (context, index) {
-                      final anagrafica = _anagrafiche[index];
-                      return HoverableCard(
-                        title: '${anagrafica.nome} ${anagrafica.cognome}',
-                        subtitle: 'ID: ${anagrafica.id}',
-                        anagrafica: anagrafica,
-                      );
-                    },
-                  ),
+                : _filteredAnagrafiche.isEmpty
+                    ? const Center(child: Text('Nessuna anagrafica trovata'))
+                    : ListView.builder(
+                        itemCount: _filteredAnagrafiche.length,
+                        itemBuilder: (context, index) {
+                          final anagrafica = _filteredAnagrafiche[index];
+                          return HoverableCard(
+                            title: '${anagrafica.nome} ${anagrafica.cognome}',
+                            subtitle: 'ID: ${anagrafica.id}',
+                            anagrafica: anagrafica,
+                            onRefresh: _fetchAnagrafiche, // Ricarica dati aggiornati
+                          );
+                        },
+                      ),
           ),
         ],
       ),

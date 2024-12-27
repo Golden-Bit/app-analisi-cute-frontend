@@ -18,12 +18,14 @@ class _ComponentCState extends State<ComponentC> {
   final AnagraficaApi _api = AnagraficaApi(); // SDK API per le anagrafiche
   List<Anagrafica> _anagrafiche = []; // Lista delle anagrafiche
   Anagrafica? _selectedAnagrafica; // Anagrafica selezionata
+  String? _selectedZone; // Zona del corpo selezionata
   bool _isLoading = true; // Stato di caricamento
 
   @override
   void initState() {
     super.initState();
     _fetchAnagrafiche(); // Carica le anagrafiche all'inizializzazione
+    _selectedZone = "Viso"; // Zona predefinita
   }
 
   Future<void> _fetchAnagrafiche() async {
@@ -63,46 +65,63 @@ class _ComponentCState extends State<ComponentC> {
       padding: const EdgeInsets.all(8.0), // Outer padding for the entire component
       child: Column(
         children: [
-          // Dropdown per la selezione dell'anagrafica
+          // Dropdowns per la selezione dell'anagrafica e della zona del corpo
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else
-            Column(
+            Row(
               children: [
-                Align(
-                  alignment: Alignment.center, // Centra il menu dropdown
-                  child: SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.5, // Larghezza dimezzata
-                    child: DropdownButton<Anagrafica>(
-                      value: _selectedAnagrafica,
-                      hint: const Text('Seleziona un\'anagrafica'),
-                      isExpanded: true, // Occupa tutta la larghezza del contenitore padre
-                      items: _anagrafiche.map((anagrafica) {
-                        return DropdownMenuItem<Anagrafica>(
-                          value: anagrafica,
-                          child: Text('${anagrafica.nome} ${anagrafica.cognome}'),
-                        );
-                      }).toList(),
-                      onChanged: (selected) {
-                        setState(() {
-                          _selectedAnagrafica = selected;
-                        });
-                        widget.onAnagraficaSelected(selected); // Notifica il cambiamento al parent
-                      },
-                    ),
+                // Dropdown per la selezione dell'anagrafica
+                Expanded(
+                  child: DropdownButton<Anagrafica>(
+                    value: _selectedAnagrafica,
+                    hint: const Text('Seleziona un\'anagrafica'),
+                    isExpanded: true,
+                    items: _anagrafiche.map((anagrafica) {
+                      return DropdownMenuItem<Anagrafica>(
+                        value: anagrafica,
+                        child: Text('${anagrafica.nome} ${anagrafica.cognome}'),
+                      );
+                    }).toList(),
+                    onChanged: (selected) {
+                      setState(() {
+                        _selectedAnagrafica = selected;
+                      });
+                      widget.onAnagraficaSelected(selected);
+                    },
                   ),
                 ),
-                const SizedBox(height: 12), // Spaziatura tra dropdown e contenuto principale
+                const SizedBox(width: 12), // Spazio tra i dropdown
+                // Dropdown per la selezione della zona del corpo
+                Expanded(
+                  child: DropdownButton<String>(
+                    value: _selectedZone,
+                    hint: const Text('Seleziona Zona del Corpo'),
+                    isExpanded: true,
+                    items: ['Viso', 'Collo', 'Spalle', 'Braccia', 'Gambe', 'Torso']
+                        .map((zone) => DropdownMenuItem<String>(
+                              value: zone,
+                              child: Text(zone),
+                            ))
+                        .toList(),
+                    onChanged: (zone) {
+                      setState(() {
+                        _selectedZone = zone;
+                      });
+                    },
+                  ),
+                ),
               ],
             ),
+          const SizedBox(height: 12), // Spaziatura tra dropdown e contenuto principale
           Expanded(
             child: Row(
               children: [
                 // Colonna per le coppie chiave-valore
                 Expanded(
-                  flex: 3, // Modifica la larghezza per occupare il 25% in più dello spazio iniziale
+                  flex: 3,
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 0.0), // Padding dal margine sinistro
+                    padding: const EdgeInsets.only(left: 0.0),
                     child: _selectedAnagrafica == null
                         ? const Center(
                             child: Text(
@@ -113,7 +132,7 @@ class _ComponentCState extends State<ComponentC> {
                         : Container(
                             decoration: BoxDecoration(
                               border: Border.all(color: Colors.grey),
-                              borderRadius: BorderRadius.circular(2), // Border radius ridotto a 2
+                              borderRadius: BorderRadius.circular(2),
                             ),
                             child: Scrollbar(
                               thumbVisibility: true,
@@ -122,11 +141,10 @@ class _ComponentCState extends State<ComponentC> {
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: _generateKeyValuePairs(_selectedAnagrafica!)
                                         .map((pair) => Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 4.0), // Spaziatura tra le coppie
+                                              padding: const EdgeInsets.symmetric(vertical: 4.0),
                                               child: Row(
                                                 children: [
                                                   Text(
@@ -151,16 +169,16 @@ class _ComponentCState extends State<ComponentC> {
                           ),
                   ),
                 ),
-                const SizedBox(width: 12), // Spaziatura tra le colonne
+                const SizedBox(width: 12),
                 // Modello 3D
                 Expanded(
-                  flex: 3, // Mantiene la larghezza del modello 3D invariata
+                  flex: 3,
                   child: ThreeDModelViewer(
-                    key: ValueKey(_selectedAnagrafica?.id), // Forza il rebuilding
+                    key: ValueKey(_selectedAnagrafica?.id),
                     src: _selectedAnagrafica != null &&
                             _selectedAnagrafica!.gender.toLowerCase() == "donna"
-                        ? "http://127.0.0.1:8000/models/femalebody_with_base_color.glb"
-                        : "http://127.0.0.1:8000/models/malebody_with_base_color.glb",
+                        ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
+                        : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
                   ),
                 ),
               ],

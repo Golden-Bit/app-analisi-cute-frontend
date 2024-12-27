@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AnalysisApi {
-  final String baseUrl = "http://34.13.153.241:8001"; // Modificato per riflettere la porta corretta
+  final String baseUrl = "https://www.goldbitweb.com/api2"; // Modificato per riflettere la porta corretta
 
   AnalysisApi();
 

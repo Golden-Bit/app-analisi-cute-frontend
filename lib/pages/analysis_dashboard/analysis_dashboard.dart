@@ -284,7 +284,7 @@ Expanded(
                                 flex: 1,
                                 child: ComponentD(
                                   modelSrc:
-                                      'http://127.0.0.1:8000/models/Skin_with_base_color.glb',
+                                      'https://www.goldbitweb.com/api1/models/skin_with_base_color.glb',
                                   analysisData: _analysisScores,
                                 ),
                               ),
