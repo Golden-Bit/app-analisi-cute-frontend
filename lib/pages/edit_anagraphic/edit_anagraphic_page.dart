@@ -3,8 +3,15 @@ import 'package:app_analisi_cute/backend_sdk/patients.dart';
 
 class EditAnagraficaPage extends StatefulWidget {
   final Anagrafica anagrafica;
+  final String username;
+  final String password;
 
-  const EditAnagraficaPage({Key? key, required this.anagrafica}) : super(key: key);
+  const EditAnagraficaPage({
+    Key? key,
+    required this.anagrafica,
+    required this.username,
+    required this.password,
+  }) : super(key: key);
 
   @override
   _EditAnagraficaPageState createState() => _EditAnagraficaPageState();
@@ -98,7 +105,13 @@ class _EditAnagraficaPageState extends State<EditAnagraficaPage> {
         analysisHistory: widget.anagrafica.analysisHistory,
       );
 
-      await _api.updateAnagrafica(widget.anagrafica.id!, updatedAnagrafica);
+      // Call SDK to update the anagrafica
+      await _api.updateAnagrafica(
+        widget.username,
+        widget.password,
+        widget.anagrafica.id!,
+        updatedAnagrafica,
+      );
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Anagrafica aggiornata con successo!')),

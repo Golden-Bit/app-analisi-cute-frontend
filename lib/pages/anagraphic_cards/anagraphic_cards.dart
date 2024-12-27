@@ -8,7 +8,9 @@ class HoverableCard extends StatefulWidget {
   final String title;
   final String subtitle;
   final Anagrafica anagrafica;
-  final VoidCallback onRefresh; // Callback per ricaricare la lista
+  final VoidCallback onRefresh;
+  final String username;
+  final String password;
 
   const HoverableCard({
     Key? key,
@@ -16,6 +18,8 @@ class HoverableCard extends StatefulWidget {
     required this.subtitle,
     required this.anagrafica,
     required this.onRefresh,
+    required this.username,
+    required this.password,
   }) : super(key: key);
 
   @override
@@ -25,6 +29,21 @@ class HoverableCard extends StatefulWidget {
 class _HoverableCardState extends State<HoverableCard> {
   bool _isHovered = false;
 
+  Future<void> _deleteAnagrafica() async {
+    try {
+      final api = AnagraficaApi();
+      await api.deleteAnagrafica(widget.username, widget.password, widget.anagrafica.id!);
+      widget.onRefresh();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anagrafica eliminata con successo!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante l\'eliminazione: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
@@ -33,7 +52,7 @@ class _HoverableCardState extends State<HoverableCard> {
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(2), // Imposta il border radius a 2
+          borderRadius: BorderRadius.circular(2),
         ),
         child: ListTile(
           title: Text(widget.title),
@@ -53,13 +72,15 @@ class _HoverableCardState extends State<HoverableCard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => EditAnagraficaPage(anagrafica: widget.anagrafica),
+                    builder: (context) => EditAnagraficaPage(username: widget.username, password: widget.password, anagrafica: widget.anagrafica),
                   ),
                 ).then((updatedAnagrafica) {
                   if (updatedAnagrafica != null) {
-                    widget.onRefresh(); // Ricarica la lista delle anagrafiche
+                    widget.onRefresh();
                   }
                 });
+              } else if (value == 'Elimina') {
+                _deleteAnagrafica();
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -84,7 +105,11 @@ class _HoverableCardState extends State<HoverableCard> {
 }
 
 class AnagrafichePage extends StatefulWidget {
-  const AnagrafichePage({Key? key}) : super(key: key);
+  final String username;
+  final String password;
+
+  const AnagrafichePage({Key? key, required this.username, required this.password})
+      : super(key: key);
 
   @override
   State<AnagrafichePage> createState() => _AnagrafichePageState();
@@ -109,7 +134,7 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
       _isLoading = true;
     });
     try {
-      final anagrafiche = await _api.getAnagrafiche();
+      final anagrafiche = await _api.getAnagrafiche(widget.username, widget.password);
       setState(() {
         _allAnagrafiche = anagrafiche;
         _filteredAnagrafiche = anagrafiche;
@@ -139,10 +164,10 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const NewAnagraficaPage(),
+        builder: (context) => NewAnagraficaPage(username: widget.username, password: widget.password), 
       ),
     ).then((_) {
-      _fetchAnagrafiche(); // Ricarica anagrafiche dopo la creazione
+      _fetchAnagrafiche();
     });
   }
 
@@ -236,7 +261,9 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
                             title: '${anagrafica.nome} ${anagrafica.cognome}',
                             subtitle: 'ID: ${anagrafica.id}',
                             anagrafica: anagrafica,
-                            onRefresh: _fetchAnagrafiche, // Ricarica dati aggiornati
+                            onRefresh: _fetchAnagrafiche,
+                            username: widget.username,
+                            password: widget.password,
                           );
                         },
                       ),

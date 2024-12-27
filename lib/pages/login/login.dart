@@ -1,5 +1,6 @@
 import 'package:app_analisi_cute/pages/home/home.dart';
 import 'package:flutter/material.dart';
+import 'package:app_analisi_cute/backend_sdk/users.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -11,21 +12,36 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final Api4Sdk _api4Sdk = Api4Sdk(); // Istanza dell'SDK
   String _errorMessage = '';
 
-  void _login() {
-    const validUsername = 'admin';
-    const validPassword = 'admin';
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
 
-    if (_usernameController.text == validUsername &&
-        _passwordController.text == validPassword) {
+    if (username.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Inserisci username e password';
+      });
+      return;
+    }
+
+    try {
+      await _api4Sdk.loginUser(username: username, password: password);
+
+      // Naviga alla home page con passaggio delle credenziali
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(
+          builder: (context) => HomePage(
+            username: username,
+            password: password,
+          ),
+        ),
       );
-    } else {
+    } catch (e) {
       setState(() {
-        _errorMessage = 'Username o password non corretti';
+        _errorMessage = 'Login fallito: ${e.toString()}';
       });
     }
   }
@@ -106,3 +122,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+

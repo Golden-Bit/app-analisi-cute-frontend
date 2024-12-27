@@ -42,7 +42,7 @@ class Anagrafica {
       gender: json['gender'],
       skinTypes: List<String>.from(json['skin_types']),
       issues: List<String>.from(json['issues']),
-      analysisHistory: List<Map<String, dynamic>>.from(json['analysis_history'])
+      analysisHistory: List<Map<String, dynamic>>.from(json['analysis_history']),
     );
   }
 
@@ -59,19 +59,25 @@ class Anagrafica {
       'gender': gender,
       'skin_types': skinTypes,
       'issues': issues,
+      'analysis_history': analysisHistory,
     };
   }
 }
 
 class AnagraficaApi {
   final String baseUrl;
+  final http.Client client;
 
-  AnagraficaApi({this.baseUrl = "https://www.goldbitweb.com/api3"});
+  AnagraficaApi({this.baseUrl = "https://www.goldbitweb.com/api3", http.Client? client})
+      : client = client ?? http.Client();
 
-  // Recupera tutte le anagrafiche
-  Future<List<Anagrafica>> getAnagrafiche() async {
-    final url = Uri.parse('$baseUrl/anagrafiche');
-    final response = await http.get(url);
+  // Recupera tutte le anagrafiche per uno specifico utente
+  Future<List<Anagrafica>> getAnagrafiche(String username, String password) async {
+    final url = Uri.parse('$baseUrl/anagrafiche?username=$username&password=$password');
+    final response = await client.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = json.decode(response.body);
@@ -82,28 +88,26 @@ class AnagraficaApi {
   }
 
   // Crea una nuova anagrafica
-  Future<Anagrafica> createAnagrafica(Anagrafica anagrafica) async {
-    final url = Uri.parse('$baseUrl/create_anagrafiche');
-    final response = await http.post(
+  Future<void> createAnagrafica(String username, String password, Anagrafica anagrafica) async {
+    final url = Uri.parse('$baseUrl/create_anagrafiche?username=$username&password=$password');
+    final response = await client.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: json.encode(anagrafica.toJson()),
+      body: json.encode(anagrafica.toJson()), // Solo l'anagrafica nel body
     );
 
-    if (response.statusCode == 200) {
-      return Anagrafica.fromJson(json.decode(response.body));
-    } else {
+    if (response.statusCode != 200) {
       throw Exception('Errore durante la creazione dell\'anagrafica: ${response.body}');
     }
   }
 
   // Aggiorna un'anagrafica esistente
-  Future<Anagrafica> updateAnagrafica(String id, Anagrafica anagrafica) async {
-    final url = Uri.parse('$baseUrl/anagrafiche/$id');
-    final response = await http.put(
+  Future<Anagrafica> updateAnagrafica(String username, String password, String id, Anagrafica updatedData) async {
+    final url = Uri.parse('$baseUrl/anagrafiche/$id?username=$username&password=$password');
+    final response = await client.put(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: json.encode(anagrafica.toJson()),
+      body: json.encode(updatedData.toJson()), // Solo i dati aggiornati nel body
     );
 
     if (response.statusCode == 200) {
@@ -114,9 +118,12 @@ class AnagraficaApi {
   }
 
   // Elimina un'anagrafica esistente
-  Future<void> deleteAnagrafica(String id) async {
-    final url = Uri.parse('$baseUrl/anagrafiche/$id');
-    final response = await http.delete(url);
+  Future<void> deleteAnagrafica(String username, String password, String id) async {
+    final url = Uri.parse('$baseUrl/anagrafiche/$id?username=$username&password=$password');
+    final response = await client.delete(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
 
     if (response.statusCode != 200) {
       throw Exception('Errore durante l\'eliminazione dell\'anagrafica: ${response.body}');

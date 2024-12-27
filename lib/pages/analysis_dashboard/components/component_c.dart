@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 
 class ComponentC extends StatefulWidget {
   final void Function(Anagrafica?) onAnagraficaSelected; // Callback per la selezione dell'anagrafica
+  final String username;
+  final String password;
 
   const ComponentC({
     Key? key,
     required this.onAnagraficaSelected,
+    required this.username,
+    required this.password,
   }) : super(key: key);
 
   @override
@@ -29,8 +33,11 @@ class _ComponentCState extends State<ComponentC> {
   }
 
   Future<void> _fetchAnagrafiche() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
-      final anagrafiche = await _api.getAnagrafiche();
+      final anagrafiche = await _api.getAnagrafiche(widget.username, widget.password);
       setState(() {
         _anagrafiche = anagrafiche;
         _isLoading = false;

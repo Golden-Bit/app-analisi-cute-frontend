@@ -11,7 +11,14 @@ import 'components/component_d.dart';
 import 'components/component_b.dart';
 
 class AnalysisDashboard extends StatefulWidget {
-  const AnalysisDashboard({Key? key}) : super(key: key);
+  final String username;
+  final String password;
+
+  const AnalysisDashboard({
+    Key? key,
+    required this.username,
+    required this.password,
+  }) : super(key: key);
 
   @override
   _AnalysisDashboardState createState() => _AnalysisDashboardState();
@@ -72,63 +79,64 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
   }
 
   Future<void> _performAnalysis() async {
-  if (_selectedPatientId == null) { // Controlla se è stato selezionato un paziente
-    // Mostra un messaggio se nessun paziente è selezionato
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi.')),
-    );
-    return; // Interrompe l'esecuzione se non c'è paziente selezionato
-  }
+    if (_selectedPatientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi.')),
+      );
+      return;
+    }
 
-  // Prepara tutte le immagini per l'analisi
-  final allImages = _imagesByAnalysis.map((type, images) {
-    final base64Images = images.map((image) => base64Encode(image)).toList();
-    return MapEntry(type, base64Images);
-  });
-
-  setState(() {
-    _isAnalyzing = true;
-  });
-
-  try {
-    // Esegui la chiamata all'API con l'ID del paziente selezionato
-    final response = await _api.analyzeSkin(
-      patient_id: _selectedPatientId!, // Passa l'ID del paziente selezionato
-      images: allImages.values.expand((list) => list).toList(), // Unisci tutte le immagini
-    );
-
-    // Aggiorna i risultati di tutte le analisi
-    setState(() {
-      for (var entry in response.entries) {
-        final analysisType = entry.key;
-        final result = entry.value as Map<String, dynamic>;
-        _resultsByAnalysis[analysisType] = result;
-        _analysisScores[analysisType] = result["valore"] ?? 0;
-      }
-      _isAnalyzing = false;
-    });
-  } catch (e) {
-    setState(() {
-      _isAnalyzing = false;
+    final allImages = _imagesByAnalysis.map((type, images) {
+      final base64Images = images.map((image) => base64Encode(image)).toList();
+      return MapEntry(type, base64Images);
     });
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Errore"),
-          content: Text("Si è verificato un errore: $e"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    try {
+      final response = await _api.analyzeSkin(
+        username: widget.username,
+        password: widget.password,
+        patientId: _selectedPatientId!,
+        //username: widget.username,
+        //password: widget.password,
+        images: allImages.values.expand((list) => list).toList(),
+      );
+
+      setState(() {
+        for (var entry in response.entries) {
+          final analysisType = entry.key;
+          final result = entry.value as Map<String, dynamic>;
+          _resultsByAnalysis[analysisType] = result;
+          _analysisScores[analysisType] = result["valore"] ?? 0;
+        }
+        _isAnalyzing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isAnalyzing = false;
+      });
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("Errore"),
+            content: Text("Si è verificato un errore: $e"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     const double borderRadius = 2.0;
@@ -155,20 +163,18 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: ElevatedButton(
-  style: ElevatedButton.styleFrom(
-    backgroundColor: Colors.black,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(2),
-    ),
-  ),
-  onPressed: _isAnalyzing
-      ? null
-      : _performAnalysis, // Chiamata alla funzione aggiornata
-  child: const Text(
-    'Avvia Analisi',
-    style: TextStyle(color: Colors.white),
-  ),
-),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              onPressed: _isAnalyzing ? null : _performAnalysis,
+              child: const Text(
+                'Avvia Analisi',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -219,40 +225,34 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
                                 ),
                               ),
                               const Divider(thickness: 1, color: Colors.grey, height: 1),
-Expanded(
-  flex: 1,
-  child: ComponentC(
-    //keyValuePairs: [
-    //  {"Peso": "50 kg"},
-    //  {"Altezza": "1.75 m"},
-    //  {"Età": "30 anni"},
-    //  {"BMI": "22.5"},
-    //  {"Genere": "Maschio"},
-    //],
-    //modelSrc: 'http://127.0.0.1:8000/models/femalebody_with_base_color.glb',
-    onAnagraficaSelected: _onPatientSelected, // Callback per aggiornare il paziente selezionato
-  ),
-),
+                              Expanded(
+                                flex: 1,
+                                child: ComponentC(
+                                  onAnagraficaSelected: _onPatientSelected,
+                                  username: widget.username,
+                                  password: widget.password,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-  flex: 2,
-  child: Container(
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(borderRadius),
-      color: Colors.white,
-    ),
-    child: CameraGalleryWidget(
-    onImagesUpdated: (List<Uint8List> images) {
-    _updateImages(_selectedAnalysis, images);
-  },
-  initialImages: _imagesByAnalysis[_selectedAnalysis] ?? [],
-),
-  ),
-),
+                        flex: 2,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(borderRadius),
+                            color: Colors.white,
+                          ),
+                          child: CameraGalleryWidget(
+                            onImagesUpdated: (List<Uint8List> images) {
+                              _updateImages(_selectedAnalysis, images);
+                            },
+                            initialImages: _imagesByAnalysis[_selectedAnalysis] ?? [],
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         flex: 1,

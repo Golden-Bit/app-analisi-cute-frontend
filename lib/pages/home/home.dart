@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:app_analisi_cute/pages/anagraphic_cards/anagraphic_cards.dart';
 import '../analysis_dashboard/analysis_dashboard.dart';
 
-
 class HomePage extends StatelessWidget {
-  const HomePage({Key? key}) : super(key: key);
+  final String username;
+  final String password;
+
+  const HomePage({Key? key, required this.username, required this.password}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final double cardSize = MediaQuery.of(context).size.width / 4; // Aumenta il riquadro
+    final double cardSize = MediaQuery.of(context).size.width / 4;
 
     return Scaffold(
       appBar: AppBar(
@@ -24,9 +26,9 @@ class HomePage extends StatelessWidget {
       ),
       body: Center(
         child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9, // Limita la larghezza del contenitore
+          width: MediaQuery.of(context).size.width * 0.9,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Spaziatura uniforme
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               HomeCard(
                 title: 'Test Cutaneo',
@@ -35,7 +37,9 @@ class HomePage extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AnalysisDashboard()),
+                    MaterialPageRoute(
+                      builder: (context) => AnalysisDashboard(username: username, password: password),
+                    ),
                   );
                 },
               ),
@@ -46,7 +50,9 @@ class HomePage extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const AnagrafichePage()),
+                    MaterialPageRoute(
+                      builder: (context) => AnagrafichePage(username: username, password: password),
+                    ),
                   );
                 },
               ),
@@ -57,7 +63,9 @@ class HomePage extends StatelessWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ImpostazioniCentroPage()),
+                    MaterialPageRoute(
+                      builder: (context) => ImpostazioniCentroPage(),//username: username, password: password),
+                    ),
                   );
                 },
               ),
@@ -72,7 +80,7 @@ class HomePage extends StatelessWidget {
 class HomeCard extends StatelessWidget {
   final String title;
   final IconData icon;
-  final double size; // Dimensione quadrata
+  final double size;
   final VoidCallback onTap;
 
   const HomeCard({
@@ -93,19 +101,19 @@ class HomeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(2),
         ),
         child: Container(
-          width: size, // Dimensione del riquadro aumentata
+          width: size,
           height: size,
-          padding: const EdgeInsets.all(8), // Ridotto il padding
+          padding: const EdgeInsets.all(8),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: size / 2.5, color: Colors.black), // Icona ingrandita
+              Icon(icon, size: size / 2.5, color: Colors.black),
               const SizedBox(height: 8),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: size / 10, // Font proporzionato al riquadro
+                  fontSize: size / 10,
                   fontWeight: FontWeight.bold,
                 ),
               ),

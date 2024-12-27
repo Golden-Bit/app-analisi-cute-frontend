@@ -3,7 +3,14 @@ import 'package:app_analisi_cute/backend_sdk/patients.dart';
 import 'package:uuid/uuid.dart';
 
 class NewAnagraficaPage extends StatefulWidget {
-  const NewAnagraficaPage({Key? key}) : super(key: key);
+  final String username;
+  final String password;
+
+  const NewAnagraficaPage({
+    Key? key,
+    required this.username,
+    required this.password,
+  }) : super(key: key);
 
   @override
   _NewAnagraficaPageState createState() => _NewAnagraficaPageState();
@@ -81,13 +88,11 @@ class _NewAnagraficaPageState extends State<NewAnagraficaPage> {
         gender: _gender,
         skinTypes: selectedSkinTypesList,
         issues: selectedIssuesList,
-        analysisHistory: []
+        analysisHistory: [],
       );
 
-      print(newAnagrafica);
-
       // Call SDK to save the anagrafica
-      await _api.createAnagrafica(newAnagrafica);
+      await _api.createAnagrafica(widget.username, widget.password, newAnagrafica);
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
@@ -98,11 +103,9 @@ class _NewAnagraficaPageState extends State<NewAnagraficaPage> {
       Navigator.pop(context);
     } catch (e) {
       // Show error message
-      //ScaffoldMessenger.of(context).showSnackBar(
-        //SnackBar(content: Text('Errore durante il salvataggio: $e')),
-      //);
-            // Navigate back
-      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante il salvataggio: $e')),
+      );
     }
   }
 
