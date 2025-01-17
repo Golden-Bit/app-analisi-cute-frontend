@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:app_analisi_cute/pages/anagraphic_cards/components/anagraphic_card_viewer.dart';
+import 'package:flutter/material.dart';
 import 'package:app_analisi_cute/backend_sdk/patients.dart';
 
 class HoverableCard extends StatefulWidget {
@@ -32,6 +32,13 @@ class _HoverableCardState extends State<HoverableCard> {
           borderRadius: BorderRadius.circular(2), // Imposta il border radius a 2
         ),
         child: ListTile(
+          // Aggiunto comportamento per aprire il dialog cliccando sull'intera scheda
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => AnagraficaView(anagrafica: widget.anagrafica),
+            );
+          },
           title: Text(widget.title),
           subtitle: Text(widget.subtitle),
           trailing: PopupMenuButton<String>(
@@ -45,6 +52,10 @@ class _HoverableCardState extends State<HoverableCard> {
                   context: context,
                   builder: (context) => AnagraficaView(anagrafica: widget.anagrafica),
                 );
+              } else if (value == 'Modifica') {
+                // Logica per la modifica
+              } else if (value == 'Elimina') {
+                // Logica per l'eliminazione
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[

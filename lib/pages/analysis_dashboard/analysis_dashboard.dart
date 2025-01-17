@@ -9,6 +9,8 @@ import 'components/component_a.dart';
 import 'components/component_c.dart';
 import 'components/component_d.dart';
 import 'components/component_b.dart';
+import 'dart:html' as html; // Questo import funziona solo su Web
+import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
 
 class AnalysisDashboard extends StatefulWidget {
   final String username;
@@ -32,12 +34,84 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
   String _selectedAnalysis = "Idratazione"; // Current selected type
   bool _isAnalyzing = false; // Track if analysis is in progress
   String? _selectedPatientId; // ID del paziente selezionato
+  final AnagraficaApi __api = AnagraficaApi(); // SDK API per le anagrafiche
 
   void _onPatientSelected(Anagrafica? selectedPatient) {
     setState(() {
       _selectedPatientId = selectedPatient?.id; // Aggiorna lo stato con l'ID del paziente selezionato
     });
   }
+
+
+List<Anagrafica> _anagrafiche = []; // Lista di anagrafiche
+
+  Future<void> _fetchAnagrafiche() async {
+    setState(() {
+      //_isLoading = true;
+    });
+    try {
+      final anagrafiche = await __api.getAnagrafiche(widget.username, widget.password);
+      setState(() {
+        _anagrafiche = anagrafiche;
+        //_isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        //_isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante il caricamento delle anagrafiche: $e')),
+      );
+    }
+  }
+
+Anagrafica? _getAnagraficaById(String patientId) {
+  // Supponendo che _anagrafiche sia una lista di tutte le anagrafiche disponibili
+  return _anagrafiche.firstWhere(
+    (anagrafica) => anagrafica.id == patientId,
+    orElse: () => null!,
+  );
+}
+
+void _generateAndDownloadReport() async {
+  if (_selectedPatientId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Seleziona un paziente prima di generare il report.')),
+    );
+    return;
+  }
+
+  // Recupera i dati dell'anagrafica e dei risultati
+  final selectedAnagrafica = _getAnagraficaById(_selectedPatientId!);
+  if (selectedAnagrafica == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Errore: impossibile trovare i dati del paziente.')),
+    );
+    return;
+  }
+
+  // Genera l'HTML dinamicamente
+  final reportHtml = generateReportHtml(
+    anagrafica: selectedAnagrafica,
+    analysisResults: _resultsByAnalysis,
+  );
+
+  // Crea un blob HTML e consenti il download
+  try {
+    final blob = html.Blob([reportHtml], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..target = 'blank'
+      ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Errore durante la generazione del report: $e')),
+    );
+  }
+}
+
 
   @override
   void initState() {
@@ -54,6 +128,9 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
       "Densità pilifera",
       "Pori ostruiti",
     ];
+
+    _fetchAnagrafiche();
+    
     for (var type in analysisTypes) {
       _imagesByAnalysis[type] = [];
       _resultsByAnalysis[type] = {
@@ -137,6 +214,7 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     const double borderRadius = 2.0;
@@ -176,24 +254,23 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              onPressed: () {
-                print('Genera Report premuto');
-              },
-              child: const Text(
-                'Genera Report',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ),
+Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+    child: ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.black,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+      // Qui viene richiamata la funzione per generare il report
+      onPressed: _generateAndDownloadReport,
+      child: const Text(
+        'Genera Report',
+        style: TextStyle(color: Colors.white),
+      ),
+    ),
+  ),
         ],
       ),
       body: Container(
@@ -303,3 +380,125 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
     );
   }
 }
+
+
+
+String generateReportHtml({
+  required Anagrafica anagrafica,
+  required Map<String, Map<String, dynamic>> analysisResults,
+}) {
+  return '''
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Report Analisi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .table th, .table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    .table th {
+      background-color: #f2f2f2;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Report Analisi della Pelle</h1>
+    <h3>Generato per: ${anagrafica.nome} ${anagrafica.cognome}</h3>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Informazioni Anagrafiche</div>
+    <table class="table">
+      <tr>
+        <th>Nome</th>
+        <td>${anagrafica.nome}</td>
+      </tr>
+      <tr>
+        <th>Cognome</th>
+        <td>${anagrafica.cognome}</td>
+      </tr>
+      <tr>
+        <th>Data di Nascita</th>
+        <td>${anagrafica.birthDate}</td>
+      </tr>
+      <tr>
+        <th>Indirizzo</th>
+        <td>${anagrafica.address}</td>
+      </tr>
+      <tr>
+        <th>Peso</th>
+        <td>${anagrafica.peso} kg</td>
+      </tr>
+      <tr>
+        <th>Altezza</th>
+        <td>${anagrafica.altezza} cm</td>
+      </tr>
+      <tr>
+        <th>Genere</th>
+        <td>${anagrafica.gender}</td>
+      </tr>
+      <tr>
+        <th>Tipo di Pelle</th>
+        <td>${anagrafica.skinTypes.join(', ')}</td>
+      </tr>
+      <tr>
+        <th>Inestetismi</th>
+        <td>${anagrafica.issues.join(', ')}</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Risultati delle Analisi</div>
+    <table class="table">
+      <tr>
+        <th>Tipo di Analisi</th>
+        <th>Valore</th>
+        <th>Descrizione</th>
+        <th>Valutazione Professionale</th>
+        <th>Consigli</th>
+      </tr>
+      ${analysisResults.entries.map((entry) {
+        final type = entry.key;
+        final result = entry.value;
+        return '''
+          <tr>
+            <td>${type}</td>
+            <td>${result['valore']}</td>
+            <td>${result['descrizione']}</td>
+            <td>${result['valutazione_professionale']}</td>
+            <td>${result['consigli']}</td>
+          </tr>
+        ''';
+      }).join()}
+    </table>
+  </div>
+</body>
+</html>
+  ''';
+}
+

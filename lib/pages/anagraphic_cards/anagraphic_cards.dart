@@ -32,7 +32,11 @@ class _HoverableCardState extends State<HoverableCard> {
   Future<void> _deleteAnagrafica() async {
     try {
       final api = AnagraficaApi();
-      await api.deleteAnagrafica(widget.username, widget.password, widget.anagrafica.id!);
+      await api.deleteAnagrafica(
+        widget.username,
+        widget.password,
+        widget.anagrafica.id!,
+      );
       widget.onRefresh();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Anagrafica eliminata con successo!')),
@@ -55,6 +59,13 @@ class _HoverableCardState extends State<HoverableCard> {
           borderRadius: BorderRadius.circular(2),
         ),
         child: ListTile(
+          // Aggiunto comportamento per aprire la visualizzazione cliccando sulla scheda
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => AnagraficaView(anagrafica: widget.anagrafica),
+            );
+          },
           title: Text(widget.title),
           subtitle: Text(widget.subtitle),
           trailing: PopupMenuButton<String>(
@@ -72,7 +83,11 @@ class _HoverableCardState extends State<HoverableCard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => EditAnagraficaPage(username: widget.username, password: widget.password, anagrafica: widget.anagrafica),
+                    builder: (context) => EditAnagraficaPage(
+                      username: widget.username,
+                      password: widget.password,
+                      anagrafica: widget.anagrafica,
+                    ),
                   ),
                 ).then((updatedAnagrafica) {
                   if (updatedAnagrafica != null) {
@@ -103,6 +118,7 @@ class _HoverableCardState extends State<HoverableCard> {
     );
   }
 }
+
 
 class AnagrafichePage extends StatefulWidget {
   final String username;
@@ -209,7 +225,9 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
           ),
         ],
       ),
-      body: Column(
+      body: Container(
+      color: Colors.white, // Sfondo bianco
+      child: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -270,6 +288,6 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
           ),
         ],
       ),
-    );
+    ));
   }
 }

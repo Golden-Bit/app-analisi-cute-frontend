@@ -24,7 +24,9 @@ class HomePage extends StatelessWidget {
         shadowColor: Colors.grey.withOpacity(0.4),
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Center(
+      body: Container(
+      color: Colors.white, // Sfondo bianco
+      child: Center(
         child: SizedBox(
           width: MediaQuery.of(context).size.width * 0.9,
           child: Row(
@@ -73,7 +75,7 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
