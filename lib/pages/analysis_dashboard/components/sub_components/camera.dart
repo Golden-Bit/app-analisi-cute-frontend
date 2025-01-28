@@ -21,37 +21,46 @@ class CameraGalleryWidget extends StatefulWidget {
 }
 
 class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
-  CameraController? _controller; // Reso nullable per gestire correttamente lo stato iniziale
+  CameraController? _controller; // Controller della fotocamera
   Future<void>? _initializeControllerFuture;
+  List<CameraDescription> _availableCameras = [];
+  CameraDescription? _selectedCamera;
   List<Uint8List> _capturedImages = [];
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
+    _initializeCameraSystem();
     _capturedImages = List.from(widget.initialImages); // Imposta immagini iniziali
   }
 
-  Future<void> _initializeCamera() async {
+  Future<void> _initializeCameraSystem() async {
     try {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
+      _availableCameras = await availableCameras(); // Ottieni l'elenco delle fotocamere
+      if (_availableCameras.isNotEmpty) {
+        setState(() {
+          _selectedCamera = _availableCameras.first; // Seleziona la prima fotocamera come predefinita
+        });
+        await _initializeCamera(_selectedCamera!);
+      } else {
         print("Nessuna fotocamera disponibile.");
-        return;
       }
-
-      _controller = CameraController(
-        cameras.first,
-        ResolutionPreset.medium,
-      );
-
-      _initializeControllerFuture = _controller!.initialize();
-      await _initializeControllerFuture; // Assicura che il controller venga inizializzato
-      setState(() {}); // Aggiorna lo stato per notificare l'inizializzazione
     } catch (e) {
       print("Errore durante l'inizializzazione della fotocamera: $e");
     }
+  }
+
+  Future<void> _initializeCamera(CameraDescription cameraDescription) async {
+    _controller?.dispose(); // Disattiva il controller precedente, se esiste
+    _controller = CameraController(
+      cameraDescription,
+      ResolutionPreset.medium,
+    );
+
+    _initializeControllerFuture = _controller!.initialize();
+    await _initializeControllerFuture; // Assicura che il controller venga inizializzato
+    setState(() {}); // Aggiorna lo stato per notificare l'inizializzazione
   }
 
   @override
@@ -105,6 +114,13 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
     );
   }
 
+  void _onCameraSelected(CameraDescription camera) async {
+    setState(() {
+      _selectedCamera = camera; // Aggiorna la fotocamera selezionata
+    });
+    await _initializeCamera(camera); // Inizializza la nuova fotocamera selezionata
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -131,37 +147,75 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
                             _controller != null &&
                             _controller!.value.isInitialized) {
                           return Center(
-                            child: AspectRatio(
-                              aspectRatio: _controller!.value.aspectRatio,
-                              child: Stack(
-                                alignment: Alignment.bottomCenter,
-                                children: [
-                                  ClipRRect(
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                AspectRatio(
+                                  aspectRatio: _controller!.value.aspectRatio,
+                                  child: ClipRRect(
                                     borderRadius: BorderRadius.circular(2),
                                     child: CameraPreview(_controller!),
                                   ),
-                                  Positioned(
-                                    bottom: 24,
-                                    child: GestureDetector(
-                                      onTap: _capturePhoto,
-                                      child: Container(
-                                        width: 60,
-                                        height: 60,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.8),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
+                                ),
+                                // Pulsante per scattare
+                                Positioned(
+                                  bottom: 24,
+                                  child: GestureDetector(
+                                    onTap: _capturePhoto,
+                                    child: Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.8),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
                                         ),
-                                        child: const Icon(Icons.camera_alt,
-                                            color: Colors.black, size: 28),
+                                      ),
+                                      child: const Icon(Icons.camera_alt,
+                                          color: Colors.black, size: 28),
+                                    ),
+                                  ),
+                                ),
+                                // Rotella impostazioni per la selezione delle fotocamere
+                                Positioned(
+                                  top: 16,
+                                  right: 16,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      showMenu(
+                                        context: context,
+                                        position: const RelativeRect.fromLTRB(200, 100, 16, 100),
+                                        items: _availableCameras
+                                            .map(
+                                              (camera) => PopupMenuItem(
+                                                value: camera,
+                                                child: Text(camera.name),
+                                              ),
+                                            )
+                                            .toList(),
+                                      ).then((selectedCamera) {
+                                        if (selectedCamera != null) {
+                                          _onCameraSelected(selectedCamera);
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Icon(
+                                        Icons.settings,
+                                        color: Colors.black,
                                       ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           );
                         } else {
