@@ -3,14 +3,16 @@ import 'dart:typed_data';
 
 import 'package:app_analisi_cute/backend_sdk/analyze.dart';
 import 'package:app_analisi_cute/backend_sdk/patients.dart';
+//import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/webrtc_camera.dart';
+//import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/videoplayer_camera.dart';
 import 'package:flutter/material.dart';
-import 'components/sub_components/camera.dart';
+import 'components/sub_components/camera_android.dart';
 import 'components/component_a.dart';
 import 'components/component_c.dart';
 import 'components/component_d.dart';
 import 'components/component_b.dart';
-import 'dart:html' as html; // Questo import funziona solo su Web
-import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
+//import 'dart:html' as html; // Questo import funziona solo su Web
+//import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
 
 class AnalysisDashboard extends StatefulWidget {
   final String username;
@@ -98,13 +100,13 @@ void _generateAndDownloadReport() async {
 
   // Crea un blob HTML e consenti il download
   try {
-    final blob = html.Blob([reportHtml], 'text/html');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..target = 'blank'
-      ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    //final blob = html.Blob([reportHtml], 'text/html');
+    //final url = html.Url.createObjectUrlFromBlob(blob);
+    //final anchor = html.AnchorElement(href: url)
+    //  ..target = 'blank'
+    //  ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
+    //  ..click();
+    //html.Url.revokeObjectUrl(url);
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Errore durante la generazione del report: $e')),

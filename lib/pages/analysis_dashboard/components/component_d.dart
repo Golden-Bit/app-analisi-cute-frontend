@@ -18,7 +18,8 @@ class ComponentD extends StatelessWidget {
           Expanded(
             flex: 3,
             child: ThreeDModelViewer(
-              src: modelSrc,
+              autoRotate: true,
+              modelUrl: modelSrc,
             ), // Replace with the actual 3D model viewer
           ),
           const SizedBox(height: 12), // Spacing between sections

@@ -58,7 +58,8 @@ class AnagraficaView extends StatelessWidget {
           borderRadius: BorderRadius.circular(2),
         ),
         child: ThreeDModelViewer(
-          src: anagrafica.gender.toLowerCase() == "donna"
+          autoRotate: true,
+          modelUrl: anagrafica.gender.toLowerCase() == "donna"
               ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
               : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
         ),

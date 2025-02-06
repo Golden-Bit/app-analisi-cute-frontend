@@ -13,9 +13,21 @@ dependencies:
   camera_web: ^0.3.5 # Implementazione web della fotocamera
   path_provider: ^2.0.15
   model_viewer_plus: ^1.9.0
-  http: ^1.2.2
+  #http: ^1.2.2
   uuid: ^4.5.1
-  flutter_html_to_pdf: ^0.7.0
+  flutter_webrtc: ^0.9.36 # Controlla l'ultima versione su pub.dev
+  video_player: ^2.9.2
+  flutter_vlc_player: ^7.4.2
+  screenshot: ^3.0.0
+  flutter_mjpeg: ^2.0.4
+  #mjpeg_stream: ^0.0.3
+  #flutter_gl: ^0.0.21
+  #flutter_3d_viewer: ^1.0.0
+  #flutter_3d_obj: ^0.1.6  # Ultima versione disponibile
+  #flutter_gl: ^0.1.2  # Renderer OpenGL per Flutter
+  #three_dart: ^0.0.5  # Porting di Three.js
+  #three_dart_scene: ^0.1.1  # Gestione delle scene e dei modelli 3D
+  #flutter_html_to_pdf: ^0.7.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

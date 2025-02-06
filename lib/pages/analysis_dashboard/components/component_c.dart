@@ -182,7 +182,8 @@ class _ComponentCState extends State<ComponentC> {
                   flex: 3,
                   child: ThreeDModelViewer(
                     key: ValueKey(_selectedAnagrafica?.id),
-                    src: _selectedAnagrafica != null &&
+                    autoRotate: true,
+                    modelUrl: _selectedAnagrafica != null &&
                             _selectedAnagrafica!.gender.toLowerCase() == "donna"
                         ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
                         : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
