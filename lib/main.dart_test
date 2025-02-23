@@ -1,0 +1,154 @@
+import 'dart:html' as html;
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb; // Per verificare se siamo su Web
+
+// ✅ Importiamo dart:ui SOLO se siamo su Flutter Web
+// Evita errori su altre piattaforme
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:ui' as ui;
+
+void main() {
+  runApp(const MaterialApp(
+    home: MJPEGStreamViewer(),
+    debugShowCheckedModeBanner: false,
+  ));
+}
+
+/// **Widget per mostrare lo stream MJPEG**
+class MJPEGStreamViewer extends StatefulWidget {
+  const MJPEGStreamViewer({super.key});
+
+  @override
+  _MJPEGStreamViewerState createState() => _MJPEGStreamViewerState();
+}
+
+class _MJPEGStreamViewerState extends State<MJPEGStreamViewer> {
+  final TextEditingController _urlController = TextEditingController(
+    text: "http://192.168.1.181:8081/video", // URL di default
+  );
+
+  String _streamUrl = "";
+  late html.ImageElement _mjpegImage;
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _streamUrl = _urlController.text;
+    _createMJPEGStream();
+  }
+
+  /// Crea l'elemento `<img>` HTML e lo registra per Flutter Web
+  void _createMJPEGStream() {
+    print("🔍 Creazione dello stream con URL: $_streamUrl");
+
+    // Crea un elemento `<img>` HTML
+    _mjpegImage = html.ImageElement()
+      ..src = "$_streamUrl"//?t=${DateTime.now().millisecondsSinceEpoch}" // Evita cache
+      ..style.width = "100%"
+      ..style.height = "auto"
+      ..crossOrigin = "anonymous"; // Evita problemi CORS se il server lo supporta
+
+    // Controlla se l'immagine si carica correttamente
+    _mjpegImage.onLoad.listen((event) {
+      print("✅ Stream caricato con successo!");
+      setState(() {
+        _isLoading = false;
+        _hasError = false;
+      });
+    });
+
+    // Se c'è un errore nel caricamento, mostriamo un messaggio
+    _mjpegImage.onError.listen((event) {
+      print("❌ Errore nel caricamento dello stream MJPEG!");
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+      });
+    });
+
+    // ✅ REGISTRA IL WIDGET SOLO SU FLUTTER WEB
+    if (kIsWeb) {
+      // ✅ Evita errori controllando se platformViewRegistry è definito
+      if (ui.platformViewRegistry != null) {
+        ui.platformViewRegistry.registerViewFactory(
+          'mjpeg-stream-view',
+          (int viewId) => _mjpegImage,
+        );
+      } else {
+        print("⚠️ ATTENZIONE: platformViewRegistry non disponibile!");
+      }
+    }
+
+    setState(() {});  // Forza il refresh
+  }
+
+  /// Aggiorna l'URL dello stream MJPEG
+  void _updateStreamUrl() {
+    print("🔄 Aggiornamento URL stream: ${_urlController.text}");
+    setState(() {
+      _streamUrl = _urlController.text;
+      _isLoading = true;
+      _hasError = false;
+    });
+    _createMJPEGStream();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("MJPEG Stream Debug")),
+      body: Column(
+        children: [
+          // **Input per cambiare l'URL dello stream**
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _urlController,
+                    decoration: const InputDecoration(
+                      labelText: "Inserisci URL MJPEG",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: _updateStreamUrl,
+                  child: const Text("Carica"),
+                ),
+              ],
+            ),
+          ),
+          // **Area di debug**
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              _hasError ? "❌ Errore nel caricamento dello stream!" : "✅ Stream attivo",
+              style: TextStyle(
+                color: _hasError ? Colors.red : Colors.green,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          // **Stream MJPEG renderizzato via `<img>` HTML**
+          Expanded(
+            child: Center(
+              child: _isLoading
+                  ? const CircularProgressIndicator()
+                  : _hasError
+                      ? const Text(
+                          "Errore nel caricamento dello stream MJPEG",
+                          style: TextStyle(color: Colors.red),
+                        )
+                      : HtmlElementView(viewType: 'mjpeg-stream-view'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

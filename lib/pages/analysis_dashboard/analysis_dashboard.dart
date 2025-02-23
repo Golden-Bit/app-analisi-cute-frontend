@@ -6,7 +6,8 @@ import 'package:app_analisi_cute/backend_sdk/patients.dart';
 //import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/webrtc_camera.dart';
 //import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/videoplayer_camera.dart';
 import 'package:flutter/material.dart';
-import 'components/sub_components/camera_android.dart';
+import 'components/sub_components/camera_web_.dart';
+//import 'components/sub_components/camera_android.dart';
 import 'components/component_a.dart';
 import 'components/component_c.dart';
 import 'components/component_d.dart';
@@ -30,7 +31,7 @@ class AnalysisDashboard extends StatefulWidget {
 
 class _AnalysisDashboardState extends State<AnalysisDashboard> {
   final AnalysisApi _api = AnalysisApi(); // API instance
-  final Map<String, List<Uint8List>> _imagesByAnalysis = {}; // Map for images
+  final Map<String, List<String>> _imagesByAnalysis = {}; // Map for images
   final Map<String, Map<String, dynamic>> _resultsByAnalysis = {}; // Results by type
   final Map<String, int> _analysisScores = {}; // Unified scores for ComponentD
   String _selectedAnalysis = "Idratazione"; // Current selected type
@@ -145,11 +146,11 @@ void _generateAndDownloadReport() async {
     }
   }
 
-  void _updateImages(String analysisType, List<Uint8List> images) {
-    setState(() {
-      _imagesByAnalysis[analysisType] = images;
-    });
-  }
+void _updateImages(String analysisType, List<String> imagesBase64) {
+  setState(() {
+    _imagesByAnalysis[analysisType] = imagesBase64;
+  });
+}
 
   void _onAnalysisSelected(String analysisType) {
     setState(() {
@@ -157,64 +158,68 @@ void _generateAndDownloadReport() async {
     });
   }
 
-  Future<void> _performAnalysis() async {
-    if (_selectedPatientId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi.')),
-      );
-      return;
-    }
+Future<void> _performAnalysis() async {
+  if (_selectedPatientId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi.')),
+    );
+    return;
+  }
 
-    final allImages = _imagesByAnalysis.map((type, images) {
-      final base64Images = images.map((image) => base64Encode(image)).toList();
-      return MapEntry(type, base64Images);
-    });
+  // ✅ Le immagini sono già in Base64, quindi non dobbiamo convertirle
+  final allImages = _imagesByAnalysis.map((type, imagesBase64) {
+    return MapEntry(type, imagesBase64);
+  });
+
+  setState(() {
+    _isAnalyzing = true;
+  });
+
+  try {
+    print("🔄 Inizio analisi per paziente $_selectedPatientId con ${allImages.length} categorie di immagini.");
+
+    final response = await _api.analyzeSkin(
+      username: widget.username,
+      password: widget.password,
+      patientId: _selectedPatientId!,
+      images: allImages.values.expand((list) => list).toList(), // ✅ Le immagini sono già in Base64
+    );
+
+    print("✅ Analisi completata. Risultati ricevuti: ${response.keys.toList()}");
 
     setState(() {
-      _isAnalyzing = true;
+      for (var entry in response.entries) {
+        final analysisType = entry.key;
+        final result = entry.value as Map<String, dynamic>;
+        _resultsByAnalysis[analysisType] = result;
+        _analysisScores[analysisType] = result["valore"] ?? 0;
+      }
+      _isAnalyzing = false;
+    });
+  } catch (e) {
+    setState(() {
+      _isAnalyzing = false;
     });
 
-    try {
-      final response = await _api.analyzeSkin(
-        username: widget.username,
-        password: widget.password,
-        patientId: _selectedPatientId!,
-        //username: widget.username,
-        //password: widget.password,
-        images: allImages.values.expand((list) => list).toList(),
-      );
+    print("❌ Errore durante l'analisi: $e");
 
-      setState(() {
-        for (var entry in response.entries) {
-          final analysisType = entry.key;
-          final result = entry.value as Map<String, dynamic>;
-          _resultsByAnalysis[analysisType] = result;
-          _analysisScores[analysisType] = result["valore"] ?? 0;
-        }
-        _isAnalyzing = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isAnalyzing = false;
-      });
-
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text("Errore"),
-            content: Text("Si è verificato un errore: $e"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text("OK"),
-              ),
-            ],
-          );
-        },
-      );
-    }
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Errore"),
+          content: Text("Si è verificato un errore: $e"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
   }
+}
 
 
   @override
@@ -324,12 +329,12 @@ Padding(
                             borderRadius: BorderRadius.circular(borderRadius),
                             color: Colors.white,
                           ),
-                          child: CameraGalleryWidget(
-                            onImagesUpdated: (List<Uint8List> images) {
-                              _updateImages(_selectedAnalysis, images);
-                            },
-                            initialImages: _imagesByAnalysis[_selectedAnalysis] ?? [],
-                          ),
+                          child: CameraGalleryWebWidget(
+  onImagesUpdated: (List<String> imagesBase64) {
+    _updateImages(_selectedAnalysis, imagesBase64);
+  },
+  initialImages: _imagesByAnalysis[_selectedAnalysis] ?? [],
+),
                         ),
                       ),
                       const SizedBox(width: 12),
