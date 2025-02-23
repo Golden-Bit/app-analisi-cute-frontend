@@ -20,6 +20,7 @@ dependencies:
   flutter_vlc_player: ^7.4.2
   screenshot: ^3.0.0
   flutter_mjpeg: ^2.0.4
+  universal_html: ^2.2.4
   #mjpeg_stream: ^0.0.3
   #flutter_gl: ^0.0.21
   #flutter_3d_viewer: ^1.0.0

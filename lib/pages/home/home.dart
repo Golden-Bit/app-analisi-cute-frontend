@@ -7,7 +7,8 @@ class HomePage extends StatelessWidget {
   final String username;
   final String password;
 
-  const HomePage({Key? key, required this.username, required this.password}) : super(key: key);
+  const HomePage({Key? key, required this.username, required this.password})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -15,67 +16,92 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Home',
-          style: TextStyle(color: Colors.black),
-        ),
         backgroundColor: Colors.white,
         elevation: 4,
         shadowColor: Colors.grey.withOpacity(0.4),
         iconTheme: const IconThemeData(color: Colors.black),
+        title: Stack(
+          children: [
+            // Titolo posizionato a sinistra
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12.0),
+                child: Text(
+                  'Home',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            // Logo centrato
+            Align(
+              alignment: Alignment.center,
+              child: Image.network(
+                'https://static.wixstatic.com/media/63b1fb_f4b32483fdcb4f39a1e294a497dd452a~mv2.png',
+                height: 40,
+              ),
+            ),
+          ],
+        ),
       ),
       body: Container(
-      color: Colors.white, // Sfondo bianco
-      child: Center(
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.9,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              HomeCard(
-                title: 'Test Cutaneo',
-                icon: Icons.medical_services,
-                size: cardSize,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AnalysisDashboard(username: username, password: password),
-                    ),
-                  );
-                },
-              ),
-              HomeCard(
-                title: 'Anagrafiche',
-                icon: Icons.account_circle,
-                size: cardSize,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AnagrafichePage(username: username, password: password),
-                    ),
-                  );
-                },
-              ),
-              HomeCard(
-                title: 'Impostazioni',
-                icon: Icons.settings,
-                size: cardSize,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ImpostazioniCentroPage(),//username: username, password: password),
-                    ),
-                  );
-                },
-              ),
-            ],
+        color: Colors.white, // Sfondo bianco
+        child: Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.9,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                HomeCard(
+                  title: 'Test Cutaneo',
+                  icon: Icons.medical_services,
+                  size: cardSize,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AnalysisDashboard(username: username, password: password),
+                      ),
+                    );
+                  },
+                ),
+                HomeCard(
+                  title: 'Anagrafiche',
+                  icon: Icons.account_circle,
+                  size: cardSize,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AnagrafichePage(username: username, password: password),
+                      ),
+                    );
+                  },
+                ),
+                HomeCard(
+                  title: 'Impostazioni',
+                  icon: Icons.settings,
+                  size: cardSize,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ImpostazioniCentroPage(),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 

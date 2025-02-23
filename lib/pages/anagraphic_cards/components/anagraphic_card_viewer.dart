@@ -10,6 +10,7 @@ class AnagraficaView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white, // Sfondo bianco per l'intero dialog
       title: const Text(
         'Dettagli Anagrafica',
         style: TextStyle(fontWeight: FontWeight.bold),
@@ -23,50 +24,51 @@ class AnagraficaView extends StatelessWidget {
             Expanded(
               flex: 4,
               child: Row(
-  crossAxisAlignment: CrossAxisAlignment.start,
-  children: [
-    _buildInfoBox(
-      context, // Passa il contesto corrente
-      'Dettagli Personali',
-      [
-        _buildDetailRow('Nome', anagrafica.nome),
-        _buildDetailRow('Cognome', anagrafica.cognome),
-        _buildDetailRow('Data di Nascita', anagrafica.birthDate),
-        _buildDetailRow('Indirizzo', anagrafica.address),
-      ],
-    ),
-    const SizedBox(width: 8),
-    _buildInfoBox(
-      context, // Passa il contesto corrente
-      'Dati Fisici',
-      [
-        _buildDetailRow('Peso', '${anagrafica.peso} kg'),
-        _buildDetailRow('Altezza', '${anagrafica.altezza} cm'),
-        _buildDetailRow('Genere', anagrafica.gender),
-        _buildDetailRow('Tipo di Pelle', anagrafica.skinTypes.join(', ')),
-        _buildDetailRow('Inestetismi', anagrafica.issues.join(', ')),
-      ],
-    ),
-    const SizedBox(width: 8),
-    // Modello 3D
-    Expanded(
-      flex: 3,
-      child: Container(
-        height: MediaQuery.of(context).size.height * 0.35,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(2),
-        ),
-        child: ThreeDModelViewer(
-          autoRotate: true,
-          modelUrl: anagrafica.gender.toLowerCase() == "donna"
-              ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
-              : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
-        ),
-      ),
-    ),
-  ],
-),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoBox(
+                    context, // Passa il contesto corrente
+                    'Dettagli Personali',
+                    [
+                      _buildDetailRow('Nome', anagrafica.nome),
+                      _buildDetailRow('Cognome', anagrafica.cognome),
+                      _buildDetailRow('Data di Nascita', anagrafica.birthDate),
+                      _buildDetailRow('Indirizzo', anagrafica.address),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  _buildInfoBox(
+                    context, // Passa il contesto corrente
+                    'Dati Fisici',
+                    [
+                      _buildDetailRow('Peso', '${anagrafica.peso} kg'),
+                      _buildDetailRow('Altezza', '${anagrafica.altezza} cm'),
+                      _buildDetailRow('Genere', anagrafica.gender),
+                      _buildDetailRow('Tipo di Pelle', anagrafica.skinTypes.join(', ')),
+                      _buildDetailRow('Inestetismi', anagrafica.issues.join(', ')),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  // Modello 3D
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.35,
+                      decoration: BoxDecoration(
+                        color: Colors.white, // Sfondo bianco
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: ThreeDModelViewer(
+                        autoRotate: true,
+                        modelUrl: anagrafica.gender.toLowerCase() == "donna"
+                            ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
+                            : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 8),
             // Colonna inferiore: Storico delle analisi con altezza aumentata
@@ -76,6 +78,7 @@ class AnagraficaView extends StatelessWidget {
                 flex: 6,
                 child: Container(
                   decoration: BoxDecoration(
+                    color: Colors.white, // Sfondo bianco per la scheda storica
                     border: Border.all(color: Colors.grey),
                     borderRadius: BorderRadius.circular(2),
                   ),
@@ -98,6 +101,7 @@ class AnagraficaView extends StatelessWidget {
                               children: anagrafica.analysisHistory!.map((analysis) {
                                 final timestamp = analysis['timestamp'] as String;
                                 return Card(
+                                  //color: Colors.white, // Sfondo bianco per ogni card
                                   elevation: 2,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(2),
@@ -138,26 +142,26 @@ class AnagraficaView extends StatelessWidget {
     );
   }
 
-Widget _buildInfoBox(BuildContext context, String title, List<Widget> children) {
-  return Expanded(
-    flex: 2,
-    child: Container(
-      height: MediaQuery.of(context).size.height * 0.35, // Altezza dinamica con il contesto
-      padding: const EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey),
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
+  Widget _buildInfoBox(BuildContext context, String title, List<Widget> children) {
+    return Expanded(
+      flex: 2,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.35,
+        padding: const EdgeInsets.all(8.0),
+        decoration: BoxDecoration(
+          color: Colors.white, // Sfondo bianco
+          border: Border.all(color: Colors.grey),
+          borderRadius: BorderRadius.circular(2),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: children,
+          ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
@@ -190,6 +194,7 @@ class _AnalysisDetailPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      backgroundColor: Colors.white, // Sfondo bianco
       title: const Text(
         'Dettagli Analisi',
         style: TextStyle(fontWeight: FontWeight.bold),

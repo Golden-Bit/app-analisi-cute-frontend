@@ -1,24 +1,19 @@
+import 'package:app_analisi_cute/pages/login/login.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_mjpeg/flutter_mjpeg.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(title: Text('MJPEG Stream')),
-        body: Center(
-          child: Mjpeg(
-            stream: 'http://192.168.1.181:8081/video', // URL del tuo stream
-            isLive: true,
-          ),
-        ),
-      ),
+      home: const LoginPage(),
     );
   }
 }
+

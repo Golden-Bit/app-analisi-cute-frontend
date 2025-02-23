@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter_vlc_player/flutter_vlc_player.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:flutter_mjpeg/flutter_mjpeg.dart';
 
 class CameraGalleryWidget extends StatefulWidget {
   final List<Uint8List> initialImages; // Immagini iniziali per il tipo di analisi
@@ -22,8 +22,12 @@ class CameraGalleryWidget extends StatefulWidget {
 }
 
 class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
-  VlcPlayerController? _vlcController; // Controller del player VLC
-  String _videoUrl = "rtsp://192.168.1.181:8554/live"; // URL di default (modificabile dal menu settings)
+  /// URL di default (puoi modificarlo se desideri un differente endpoint).
+  /// Lo script MJPEG di default (secondo esempio) è su: `http://192.168.1.181:8081/video`.
+  /// Aggiungiamo il parametro `t` per evitare eventuali cache sullo stream.
+  String _videoUrl =
+      "http://192.168.1.181:8081/video";
+
   final ScreenshotController _screenshotController = ScreenshotController(); // Controller per catturare screenshot
   List<Uint8List> _capturedImages = [];
   final ScrollController _scrollController = ScrollController();
@@ -32,40 +36,50 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
   void initState() {
     super.initState();
     _capturedImages = List.from(widget.initialImages); // Imposta immagini iniziali
-    _initializeVLCController(_videoUrl);
   }
 
-  void _initializeVLCController(String url) {
-    // Dispone del controller precedente, se esiste
-    _vlcController?.dispose();
-    _vlcController = VlcPlayerController.network(
-      _videoUrl,
-      autoPlay: true,
-      hwAcc: HwAcc.auto, // 🔹 Usa AUTO invece di FULL per maggiore stabilità
-      options: VlcPlayerOptions(
-        advanced: VlcAdvancedOptions([
-          VlcAdvancedOptions.networkCaching(300), // 🔹 Buffering migliorato per RTSP
-          VlcAdvancedOptions.liveCaching(300),
-        ]),
-        extras: [
-          '--rtsp-tcp', // 🔹 Forza RTSP su TCP per maggiore stabilità
-          '--network-caching=300',
-          '--no-stats',
-          '--drop-late-frames',
-          '--skip-frames',
-        ],
-      ),
+  /// Apre un dialog che permette di cambiare l'URL dello stream MJPEG
+  void _openUrlInputDialog() {
+    final TextEditingController urlController =
+        TextEditingController(text: _videoUrl);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Imposta URL dello stream MJPEG'),
+          content: TextField(
+            controller: urlController,
+            decoration: const InputDecoration(
+              hintText: 'Inserisci l\'URL (es: http://IP:8081/video)',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Chiude la dialog senza salvare
+              },
+              child: const Text('Annulla'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  /// Se l'utente inserisce un URL, lo usiamo.
+                  /// Altrimenti, lasciamo quello di default.
+                  if (urlController.text.isNotEmpty) {
+                    _videoUrl = urlController.text;
+                  }
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Salva'),
+            ),
+          ],
+        );
+      },
     );
-    setState(() {});
   }
 
-  @override
-  void dispose() {
-    _vlcController?.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
+  /// Cattura la foto del widget corrente (in questo caso lo stream MJPEG)
   Future<void> _capturePhoto() async {
     try {
       // Utilizza il package "screenshot" per catturare l'immagine del widget video
@@ -82,6 +96,7 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
     }
   }
 
+  /// Elimina un'immagine dalla galleria
   void _deleteImage(int index) {
     setState(() {
       _capturedImages.removeAt(index);
@@ -90,6 +105,7 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
     widget.onImagesUpdated(_capturedImages);
   }
 
+  /// Scorri la lista di immagini a sinistra
   void _scrollLeft() {
     _scrollController.animateTo(
       _scrollController.offset - 120,
@@ -98,48 +114,12 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
     );
   }
 
+  /// Scorri la lista di immagini a destra
   void _scrollRight() {
     _scrollController.animateTo(
       _scrollController.offset + 120,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-    );
-  }
-
-  void _openUrlInputDialog() {
-    final TextEditingController urlController =
-        TextEditingController(text: _videoUrl);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Imposta URL RTSP'),
-          content: TextField(
-            controller: urlController,
-            decoration: const InputDecoration(
-              hintText: 'Inserisci l\'URL RTSP',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Chiude la dialog senza salvare
-              },
-              child: const Text('Annulla'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _videoUrl = urlController.text;
-                  _initializeVLCController(_videoUrl);
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Salva'),
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -154,67 +134,63 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
             width: widget.containerWidth,
             child: AspectRatio(
               aspectRatio: 16 / 9,
-              child: (_vlcController == null)
-                  ? const Center(
-                      child: CircularProgressIndicator(), // Rotella di caricamento
-                    )
-                  : Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Il widget VlcPlayer è racchiuso all'interno di Screenshot per consentire lo snapshot
-                        Screenshot(
-                          controller: _screenshotController,
-                          child: VlcPlayer(
-                            controller: _vlcController!,
-                            aspectRatio: 16 / 9,
-                            placeholder: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                        ),
-                        // Pulsante per scattare lo screenshot
-                        Positioned(
-                          bottom: 24,
-                          child: GestureDetector(
-                            onTap: _capturePhoto,
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.8),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 2,
-                                ),
-                              ),
-                              child: const Icon(Icons.camera_alt,
-                                  color: Colors.black, size: 28),
-                            ),
-                          ),
-                        ),
-                        // Icona settings per impostare l'URL RTSP
-                        Positioned(
-                          top: 16,
-                          right: 16,
-                          child: GestureDetector(
-                            onTap: _openUrlInputDialog,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(
-                                Icons.settings,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Il widget Mjpeg è racchiuso all'interno di Screenshot
+                  // per consentire lo snapshot
+                  Screenshot(
+                    controller: _screenshotController,
+                    child: Mjpeg(
+                      stream: _videoUrl,
+                      // Imposta a true se vuoi segnalare che è uno stream in diretta
+                      isLive: true,
+                      // Se vuoi, puoi regolare frameRate e altri parametri
                     ),
+                  ),
+                  // Pulsante per scattare lo screenshot
+                  Positioned(
+                    bottom: 24,
+                    child: GestureDetector(
+                      onTap: _capturePhoto,
+                      child: Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.8),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(Icons.camera_alt,
+                            color: Colors.black, size: 28),
+                      ),
+                    ),
+                  ),
+                  // Icona settings per impostare l'URL MJPEG
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: GestureDetector(
+                      onTap: _openUrlInputDialog,
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(
+                          Icons.settings,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -235,7 +211,8 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
               ],
             ),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
               child: _capturedImages.isEmpty
                   ? const Center(
                       child: Text(
@@ -258,7 +235,8 @@ class _CameraGalleryWidgetState extends State<CameraGalleryWidget> {
                               itemCount: _capturedImages.length,
                               itemBuilder: (context, index) {
                                 return Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 8.0),
                                   child: Stack(
                                     children: [
                                       ClipRRect(
