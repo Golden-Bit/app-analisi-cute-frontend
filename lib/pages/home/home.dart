@@ -28,7 +28,7 @@ class HomePage extends StatelessWidget {
               child: Padding(
                 padding: const EdgeInsets.only(left: 12.0),
                 child: Text(
-                  'Home',
+                  '',
                   style: TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
@@ -91,7 +91,10 @@ class HomePage extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ImpostazioniCentroPage(),
+                        builder: (context) => ImpostazioniCentroPage(
+          username: username, // le credenziali ereditate dalla HomePage
+          password: password,
+        ),
                       ),
                     );
                   },

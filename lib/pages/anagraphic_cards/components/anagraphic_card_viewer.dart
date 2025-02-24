@@ -193,42 +193,64 @@ class _AnalysisDetailPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Crea le righe della tabella a partire dalle entry dell'analisi (analysis['result'])
+    List<DataRow> rows = [];
+    analysis.forEach((tipoAnalisi, details) {
+      rows.add(
+        DataRow(cells: [
+          DataCell(Text(tipoAnalisi)),
+          DataCell(Text(details['valore'].toString())),
+          DataCell(Text(details['descrizione'])),
+          DataCell(Text(details['valutazione_professionale'])),
+          DataCell(Text(details['consigli'])),
+        ]),
+      );
+    });
+
     return AlertDialog(
       backgroundColor: Colors.white, // Sfondo bianco
       title: const Text(
         'Dettagli Analisi',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.6,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: analysis.entries.map((entry) {
-              final key = entry.key;
-              final value = entry.value;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: RichText(
-                  text: TextSpan(
-                    style: const TextStyle(color: Colors.black87, fontSize: 14),
-                    children: [
-                      TextSpan(
-                        text: '$key: ',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.black),
-                      ),
-                      TextSpan(
-                        text: value is Map
-                            ? '\nValore: ${value['valore']}\nDescrizione: ${value['descrizione']}\nValutazione: ${value['valutazione_professionale']}\nConsigli: ${value['consigli']}'
-                            : value.toString(),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
+      content: SingleChildScrollView(
+        child: DataTable(
+          columns: const [
+            DataColumn(
+              label: Text(
+                'Tipo Analisi',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Punteggio',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Descrizione',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Valutazione',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            DataColumn(
+              label: Text(
+                'Consigli',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+          rows: rows,
+          columnSpacing: 16,
+          headingRowHeight: 40,
+          dataRowHeight: 60,
         ),
       ),
       actions: [
@@ -237,8 +259,10 @@ class _AnalysisDetailPopup extends StatelessWidget {
           child: const Text('Chiudi'),
         ),
       ],
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+      insetPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
     );
   }
 }
+

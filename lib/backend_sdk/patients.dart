@@ -69,23 +69,27 @@ class AnagraficaApi {
   final http.Client client;
 
   AnagraficaApi({this.baseUrl = "https://www.goldbitweb.com/api3", http.Client? client})
-      : client = client ?? http.Client();
+     : client = client ?? http.Client();
+  //AnagraficaApi({this.baseUrl = "http://127.0.0.1:8002", http.Client? client})
+  //    : client = client ?? http.Client();
 
   // Recupera tutte le anagrafiche per uno specifico utente
-  Future<List<Anagrafica>> getAnagrafiche(String username, String password) async {
-    final url = Uri.parse('$baseUrl/anagrafiche?username=$username&password=$password');
-    final response = await client.get(
-      url,
-      headers: {'Content-Type': 'application/json'},
-    );
+Future<List<Anagrafica>> getAnagrafiche(String username, String password) async {
+  final url = Uri.parse('$baseUrl/anagrafiche?username=$username&password=$password');
+  final response = await client.get(
+    url,
+    headers: {'Content-Type': 'application/json; charset=utf-8'},
+  );
 
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = json.decode(response.body);
-      return jsonList.map((json) => Anagrafica.fromJson(json)).toList();
-    } else {
-      throw Exception('Errore durante il recupero delle anagrafiche: ${response.body}');
-    }
+  if (response.statusCode == 200) {
+    // Utilizza response.bodyBytes per decodificare correttamente in UTF-8
+    final List<dynamic> jsonList = json.decode(utf8.decode(response.bodyBytes));
+    print(jsonList);
+    return jsonList.map((json) => Anagrafica.fromJson(json)).toList();
+  } else {
+    throw Exception('Errore durante il recupero delle anagrafiche: ${response.body}');
   }
+}
 
   // Crea una nuova anagrafica
   Future<void> createAnagrafica(String username, String password, Anagrafica anagrafica) async {

@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      /*appBar: AppBar(
         title: const Text(
           'Login',
           style: TextStyle(color: Colors.black), // Testo nero
@@ -58,8 +58,10 @@ class _LoginPageState extends State<LoginPage> {
         elevation: 4, // Ombra leggera
         shadowColor: Colors.grey.withOpacity(0.4), // Colore dell'ombra
         iconTheme: const IconThemeData(color: Colors.black), // Icone nere
-      ),
-      body: Center(
+      ),*/
+      body: Container(
+        color: Colors.white, 
+        child: Center(
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -119,7 +121,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

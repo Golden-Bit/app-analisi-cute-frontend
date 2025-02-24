@@ -60,6 +60,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
                     child: Container(color: Colors.transparent),
                   ),
                   Positioned(
+                    height: 200,
                     width: 300,
                     left: offset.dx,
                     top: offset.dy + renderBox.size.height,

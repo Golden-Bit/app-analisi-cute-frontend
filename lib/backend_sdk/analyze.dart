@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 
 class AnalysisApi {
   final String baseUrl = "https://www.goldbitweb.com/api2"; // URL base per l'API
+  //final String baseUrl = "http://127.0.0.1:8001"; // URL base per l'API
+
   final http.Client client;
 
   AnalysisApi({http.Client? client}) : client = client ?? http.Client();
