@@ -23,7 +23,7 @@ class CameraGalleryWebWidget extends StatefulWidget {
 }
 
 class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
-  String _videoUrl = "http://192.168.1.181:8081/video"; // URL di default
+  String _videoUrl = "http://evnq5soayg5gt.local:8081/video";
   List<String> _capturedImages = []; // Lista immagini in Base64
   final ScrollController _scrollController = ScrollController();
 
@@ -40,7 +40,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     _setupMjpegStream();
   }
 
-  /// **Configura lo stream MJPEG**
+  /// Configura lo stream MJPEG
   void _setupMjpegStream() {
     print("🔍 Creazione dello stream con URL: $_videoUrl");
 
@@ -77,7 +77,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     _ctx = _canvas.context2D;
   }
 
-  /// **Cambia l'URL dello stream MJPEG**
+  /// Cambia l'URL dello stream MJPEG
   void _openUrlInputDialog() {
     final TextEditingController urlController =
         TextEditingController(text: _videoUrl);
@@ -115,7 +115,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     );
   }
 
-  /// **Cattura immagine dello stream MJPEG**
+  /// Cattura immagine dello stream MJPEG
   void _capturePhoto() async {
     if (_mjpegImage.complete == false) {
       print("⚠️ L'immagine non è ancora completamente caricata.");
@@ -139,7 +139,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     }
   }
 
-  /// **Elimina immagine dalla galleria**
+  /// Elimina immagine dalla galleria
   void _deleteImage(int index) {
     setState(() {
       _capturedImages.removeAt(index);
@@ -147,7 +147,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     widget.onImagesUpdated(_capturedImages);
   }
 
-  /// **Scorri la galleria a sinistra**
+  /// Scorri la galleria a sinistra
   void _scrollLeft() {
     _scrollController.animateTo(
       _scrollController.offset - 120,
@@ -156,7 +156,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     );
   }
 
-  /// **Scorri la galleria a destra**
+  /// Scorri la galleria a destra
   void _scrollRight() {
     _scrollController.animateTo(
       _scrollController.offset + 120,
@@ -170,7 +170,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // **Contenitore video sopra**
+        // Contenitore video sopra
         Container(
           width: widget.containerWidth,
           child: AspectRatio(
@@ -183,7 +183,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                     : _hasError
                         ? const Text("Errore nel caricamento dello stream MJPEG")
                         : HtmlElementView(viewType: 'mjpeg-stream-view'),
-                // **Pulsante screenshot**
+                // Pulsante screenshot
                 Positioned(
                   bottom: 24,
                   child: GestureDetector(
@@ -200,7 +200,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                     ),
                   ),
                 ),
-                // **Icona settings per cambiare URL**
+                // Icona settings per cambiare URL
                 Positioned(
                   top: 16,
                   right: 16,
@@ -222,10 +222,11 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
           ),
         ),
         const SizedBox(height: 12),
-        // **Galleria immagini sotto**
+        // Galleria immagini sotto
         Container(
           width: widget.containerWidth,
           height: widget.galleryHeight,
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(2),
@@ -242,7 +243,10 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
               ? const Center(child: Text('Nessuna immagine catturata', style: TextStyle(fontSize: 16, color: Colors.grey)))
               : Row(
                   children: [
-                    IconButton(onPressed: _scrollLeft, icon: const Icon(Icons.arrow_back)),
+                    IconButton(
+                      onPressed: _scrollLeft, 
+                      icon: const Icon(Icons.arrow_back)
+                    ),
                     Expanded(
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
@@ -251,12 +255,41 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                         itemBuilder: (context, index) {
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Image.network(_capturedImages[index], width: 100, height: 100),
+                            child: Stack(
+                              children: [
+                                // L'immagine occupa tutta l'altezza della galleria
+                                Image.network(
+                                  _capturedImages[index],
+                                  width: 100,
+                                  height: double.infinity,
+                                  fit: BoxFit.cover,
+                                ),
+                                // Icona 'X' per eliminare l'immagine, posizionata in alto a destra
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: () => _deleteImage(index),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4.0),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.5),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           );
                         },
                       ),
                     ),
-                    IconButton(onPressed: _scrollRight, icon: const Icon(Icons.arrow_forward)),
+                    IconButton(
+                      onPressed: _scrollRight, 
+                      icon: const Icon(Icons.arrow_forward)
+                    ),
                   ],
                 ),
         ),
