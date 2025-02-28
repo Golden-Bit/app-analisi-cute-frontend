@@ -7726,7 +7726,7 @@ yn:function yn(a,b,c){this.c=a
 this.f=b
 this.a=c},
 Ea:function Ea(a,b){var _=this
-_.d="http://evnq5soayg5gt.local:8081/video"
+_.d="http://u3l5ptjwajlp3.local:8081/video"
 _.e=a
 _.f=b
 _.x=_.w=_.r=$
@@ -41846,7 +41846,7 @@ zX(a,b,c,d){return this.al6(a,b,c,d)},
 al6(a,b,c,d){var s=0,r=A.M(t.a),q,p=2,o,n=this,m,l,k,j,i,h,g,f
 var $async$zX=A.N(function(e,a0){if(e===1){o=a0
 s=p}while(true)switch(s){case 0:h=t.N
-g=A.dJ("http://127.0.0.1:8001/analyze_skin").YP(0,A.ac(["username",d,"password",b],h,t.z))
+g=A.dJ("https://www.goldbitweb.com/api2/analyze_skin").YP(0,A.ac(["username",d,"password",b],h,t.z))
 p=4
 s=7
 return A.Q(n.b.iJ("POST",g,A.ac(["Content-Type","application/json"],h,h),B.b1.hJ(A.ac(["patient_id",c,"images",a],h,t.K)),null),$async$zX)
