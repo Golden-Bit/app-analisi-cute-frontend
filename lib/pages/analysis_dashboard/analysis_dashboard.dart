@@ -12,7 +12,7 @@ import 'components/component_a.dart';
 import 'components/component_c.dart';
 import 'components/component_d.dart';
 import 'components/component_b.dart';
-//import 'dart:html' as html; // Questo import funziona solo su Web
+import 'dart:html' as html; // Questo import funziona solo su Web
 //import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
 
 class AnalysisDashboard extends StatefulWidget {
@@ -94,20 +94,21 @@ void _generateAndDownloadReport() async {
   }
 
   // Genera l'HTML dinamicamente
-  final reportHtml = generateReportHtml(
-    anagrafica: selectedAnagrafica,
-    analysisResults: _resultsByAnalysis,
-  );
+final reportHtml = generateReportHtml(
+  anagrafica: selectedAnagrafica,
+  analysisResults: _resultsByAnalysis,
+  imagesByAnalysis: _imagesByAnalysis, // parametro aggiunto
+);
 
   // Crea un blob HTML e consenti il download
   try {
-    //final blob = html.Blob([reportHtml], 'text/html');
-    //final url = html.Url.createObjectUrlFromBlob(blob);
-    //final anchor = html.AnchorElement(href: url)
-    //  ..target = 'blank'
-    //  ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
-    //  ..click();
-    //html.Url.revokeObjectUrl(url);
+    final blob = html.Blob([reportHtml], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..target = 'blank'
+      ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
+    ..click();
+    html.Url.revokeObjectUrl(url);
   } catch (e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Errore durante la generazione del report: $e')),
@@ -187,15 +188,22 @@ Future<void> _performAnalysis() async {
 
     print("✅ Analisi completata. Risultati ricevuti: ${response.keys.toList()}");
 
-    setState(() {
-      for (var entry in response.entries) {
-        final analysisType = entry.key;
-        final result = entry.value as Map<String, dynamic>;
-        _resultsByAnalysis[analysisType] = result;
-        _analysisScores[analysisType] = result["valore"] ?? 0;
-      }
-      _isAnalyzing = false;
-    });
+setState(() {
+  for (var entry in response.entries) {
+    final analysisType = entry.key;
+    final value = entry.value;
+
+    if (analysisType == 'bod_zone' && value is String) {
+      // Se la chiave è "bod_zone" ed è una stringa, gestiscila separatamente
+      _resultsByAnalysis[analysisType] = {'zone': value};
+    } else if (value is Map<String, dynamic>) {
+      // Se il valore è un Map<String, dynamic>, procedi normalmente
+      _resultsByAnalysis[analysisType] = value;
+      _analysisScores[analysisType] = value["valore"] ?? 0;
+    }
+  }
+  _isAnalyzing = false;
+});
   } catch (e) {
     setState(() {
       _isAnalyzing = false;
@@ -393,6 +401,7 @@ Padding(
 String generateReportHtml({
   required Anagrafica anagrafica,
   required Map<String, Map<String, dynamic>> analysisResults,
+  required Map<String, List<String>> imagesByAnalysis, // parametro aggiunto
 }) {
   return '''
 <!DOCTYPE html>
@@ -504,6 +513,23 @@ String generateReportHtml({
       }).join()}
     </table>
   </div>
+      <div class="section">
+      <div class="section-title">Immagini</div>
+      ${imagesByAnalysis.entries.map((entry) {
+        final analysisType = entry.key;
+        final images = entry.value;
+        if (images.isNotEmpty) {
+          return '''
+            <div class="image-container">
+              <h4>${analysisType}</h4>
+              ${images.map((imgBase64) => '<img src="data:image/png;base64,$imgBase64" />').join()}
+            </div>
+          ''';
+        } else {
+          return '';
+        }
+      }).join()}
+    </div>
 </body>
 </html>
   ''';

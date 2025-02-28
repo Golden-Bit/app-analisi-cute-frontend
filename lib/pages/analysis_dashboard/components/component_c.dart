@@ -2,7 +2,8 @@ import 'package:app_analisi_cute/backend_sdk/patients.dart';
 import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/3dmodel_viewer.dart';
 import 'package:flutter/material.dart';
 
-/// CustomDropdown: dropdown personalizzato con campo di ricerca
+import 'package:flutter/material.dart';
+
 class CustomDropdown extends StatefulWidget {
   final List<String> items;
   final String value;
@@ -29,6 +30,11 @@ class _CustomDropdownState extends State<CustomDropdown> {
   bool _isDropdownOpen = false;
   final FocusNode _searchFocusNode = FocusNode();
 
+  // Altezza desiderata del dropdown
+  final double _dropdownHeight = 200.0;
+  // Larghezza fissa del dropdown
+  final double _dropdownWidth = 300.0;
+
   void _toggleDropdown() {
     if (_isDropdownOpen) {
       _closeDropdown();
@@ -44,6 +50,13 @@ class _CustomDropdownState extends State<CustomDropdown> {
     // Lista locale per il filtraggio
     List<String> localFilteredItems = List.from(widget.items);
 
+    // Calcola lo spazio disponibile sotto e sopra il widget
+    final screenHeight = MediaQuery.of(context).size.height;
+    final availableHeightBelow =
+        screenHeight - (offset.dy + renderBox.size.height);
+    // Se lo spazio sotto è inferiore all'altezza desiderata del dropdown, visualizza sopra
+    final bool displayAbove = availableHeightBelow < _dropdownHeight;
+
     _overlayEntry = OverlayEntry(
       builder: (context) {
         return Listener(
@@ -53,22 +66,29 @@ class _CustomDropdownState extends State<CustomDropdown> {
             builder: (context, setStateOverlay) {
               return Stack(
                 children: [
-                  // Schermata trasparente per chiudere il dropdown
+                  // Schermata trasparente per chiudere il dropdown al tap esterno
                   GestureDetector(
                     onTap: _closeDropdown,
                     behavior: HitTestBehavior.opaque,
                     child: Container(color: Colors.transparent),
                   ),
                   Positioned(
-                    height: 200,
-                    width: 300,
                     left: offset.dx,
-                    top: offset.dy + renderBox.size.height,
+                    // Se displayAbove è true, posiziona il dropdown sopra il campo di input,
+                    // altrimenti posizionalo sotto
+                    top: displayAbove
+                        ? offset.dy - _dropdownHeight
+                        : offset.dy + renderBox.size.height,
+                    width: _dropdownWidth,
+                    height: _dropdownHeight,
                     child: Material(
                       elevation: 4,
                       borderRadius: BorderRadius.circular(4),
                       child: CompositedTransformFollower(
-                        offset: Offset(0, renderBox.size.height),
+                        // Se displayAbove, imposta l'offset negativo per far comparire il dropdown sopra
+                        offset: displayAbove
+                            ? Offset(0, -_dropdownHeight)
+                            : Offset(0, renderBox.size.height),
                         link: _layerLink,
                         showWhenUnlinked: false,
                         child: Container(
@@ -76,7 +96,8 @@ class _CustomDropdownState extends State<CustomDropdown> {
                             borderRadius: BorderRadius.circular(4.0),
                             color: Colors.white,
                           ),
-                          constraints: const BoxConstraints(maxHeight: 300),
+                          constraints:
+                              const BoxConstraints(maxHeight: 300),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -87,6 +108,10 @@ class _CustomDropdownState extends State<CustomDropdown> {
                                   focusNode: _searchFocusNode,
                                   decoration: const InputDecoration(
                                     border: OutlineInputBorder(),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                          color: Colors.black, width: 2),
+                                    ),
                                     hintText: 'Cerca...',
                                     contentPadding: EdgeInsets.symmetric(
                                       horizontal: 8,
@@ -142,7 +167,7 @@ class _CustomDropdownState extends State<CustomDropdown> {
       widget.onDropdownOpen!();
     }
 
-    // Richiede immediatamente il focus sul campo di ricerca
+    // Imposta immediatamente il focus sul campo di ricerca
     Future.delayed(Duration.zero, () {
       _searchFocusNode.requestFocus();
     });
