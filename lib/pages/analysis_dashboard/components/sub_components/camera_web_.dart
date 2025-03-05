@@ -24,7 +24,7 @@ class CameraGalleryWebWidget extends StatefulWidget {
 
 class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
   //String _videoUrl = "http://evnq5soayg5gt.local:8081/video";
-  String _videoUrl = "http://u3l5ptjwajlp3.local:8081/video";
+  String _videoUrl = "http://127.0.0.1:8081/video";
   List<String> _capturedImages = []; // Lista immagini in Base64
   final ScrollController _scrollController = ScrollController();
 

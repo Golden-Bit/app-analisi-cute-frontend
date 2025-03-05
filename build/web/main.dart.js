@@ -7726,7 +7726,7 @@ yn:function yn(a,b,c){this.c=a
 this.f=b
 this.a=c},
 Ea:function Ea(a,b){var _=this
-_.d="http://u3l5ptjwajlp3.local:8081/video"
+_.d="http://127.0.0.1:8081/video"
 _.e=a
 _.f=b
 _.x=_.w=_.r=$
