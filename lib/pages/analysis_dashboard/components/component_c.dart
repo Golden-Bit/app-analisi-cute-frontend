@@ -2,274 +2,6 @@ import 'package:app_analisi_cute/backend_sdk/patients.dart';
 import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/3dmodel_viewer.dart';
 import 'package:flutter/material.dart';
 
-import 'package:flutter/material.dart';
-
-class CustomDropdown extends StatefulWidget {
-  final List<String> items;
-  final String value;
-  final ValueChanged<String> onChanged;
-  final VoidCallback? onDropdownOpen;
-  final VoidCallback? onDropdownClose;
-
-  const CustomDropdown({
-    Key? key,
-    required this.items,
-    required this.value,
-    required this.onChanged,
-    this.onDropdownOpen,
-    this.onDropdownClose,
-  }) : super(key: key);
-
-  @override
-  _CustomDropdownState createState() => _CustomDropdownState();
-}
-
-class _CustomDropdownState extends State<CustomDropdown> {
-  final LayerLink _layerLink = LayerLink();
-  OverlayEntry? _overlayEntry;
-  bool _isDropdownOpen = false;
-  final FocusNode _searchFocusNode = FocusNode();
-
-  // Altezza desiderata del dropdown
-  final double _dropdownHeight = 200.0;
-  // Larghezza fissa del dropdown
-  final double _dropdownWidth = 300.0;
-
-  void _toggleDropdown() {
-    if (_isDropdownOpen) {
-      _closeDropdown();
-    } else {
-      _showDropdown();
-    }
-  }
-
-  void _showDropdown() {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
-    final Offset offset = renderBox.localToGlobal(Offset.zero);
-
-    // Lista locale per il filtraggio
-    List<String> localFilteredItems = List.from(widget.items);
-
-    // Calcola lo spazio disponibile sotto e sopra il widget
-    final screenHeight = MediaQuery.of(context).size.height;
-    final availableHeightBelow =
-        screenHeight - (offset.dy + renderBox.size.height);
-    // Se lo spazio sotto è inferiore all'altezza desiderata del dropdown, visualizza sopra
-    final bool displayAbove = availableHeightBelow < _dropdownHeight;
-
-    _overlayEntry = OverlayEntry(
-      builder: (context) {
-        return Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerSignal: (event) {},
-          child: StatefulBuilder(
-            builder: (context, setStateOverlay) {
-              return Stack(
-                children: [
-                  // Schermata trasparente per chiudere il dropdown al tap esterno
-                  GestureDetector(
-                    onTap: _closeDropdown,
-                    behavior: HitTestBehavior.opaque,
-                    child: Container(color: Colors.transparent),
-                  ),
-                  Positioned(
-                    left: offset.dx,
-                    // Se displayAbove è true, posiziona il dropdown sopra il campo di input,
-                    // altrimenti posizionalo sotto
-                    top: displayAbove
-                        ? offset.dy - _dropdownHeight
-                        : offset.dy + renderBox.size.height,
-                    width: _dropdownWidth,
-                    height: _dropdownHeight,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(4),
-                      child: CompositedTransformFollower(
-                        // Se displayAbove, imposta l'offset negativo per far comparire il dropdown sopra
-                        offset: displayAbove
-                            ? Offset(0, -_dropdownHeight)
-                            : Offset(0, renderBox.size.height),
-                        link: _layerLink,
-                        showWhenUnlinked: false,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4.0),
-                            color: Colors.white,
-                          ),
-                          constraints:
-                              const BoxConstraints(maxHeight: 300),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              // Campo di ricerca
-                              Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: TextField(
-                                  focusNode: _searchFocusNode,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide: BorderSide(
-                                          color: Colors.black, width: 2),
-                                    ),
-                                    hintText: 'Cerca...',
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                  ),
-                                  onChanged: (query) {
-                                    setStateOverlay(() {
-                                      localFilteredItems = widget.items
-                                          .where((item) => item
-                                              .toLowerCase()
-                                              .contains(query.toLowerCase()))
-                                          .toList();
-                                    });
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: ListView(
-                                  shrinkWrap: true,
-                                  padding: EdgeInsets.zero,
-                                  children: localFilteredItems.map((item) {
-                                    return _buildHoverableListTile(
-                                      title: item,
-                                      onTap: () {
-                                        widget.onChanged(item);
-                                        _closeDropdown();
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-
-    Overlay.of(context)!.insert(_overlayEntry!);
-
-    setState(() {
-      _isDropdownOpen = true;
-    });
-    if (widget.onDropdownOpen != null) {
-      widget.onDropdownOpen!();
-    }
-
-    // Imposta immediatamente il focus sul campo di ricerca
-    Future.delayed(Duration.zero, () {
-      _searchFocusNode.requestFocus();
-    });
-  }
-
-  void _closeDropdown() {
-    _overlayEntry?.remove();
-    setState(() {
-      _isDropdownOpen = false;
-    });
-    if (widget.onDropdownClose != null) {
-      widget.onDropdownClose!();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _toggleDropdown,
-      child: CompositedTransformTarget(
-        link: _layerLink,
-        child: Container(
-          height: 45,
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Colors.grey, width: 1.0),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  widget.value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-              const Icon(
-                Icons.arrow_drop_down,
-                color: Colors.black,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Costruisce una ListTile che cambia colore in base all'hover
-  Widget _buildHoverableListTile({
-    required String title,
-    required VoidCallback onTap,
-    double horizontalPadding = 8.0,
-    double verticalPadding = 6.0,
-  }) {
-    Color backgroundColor = Colors.white;
-
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return MouseRegion(
-          onEnter: (_) {
-            setState(() {
-              backgroundColor = Colors.grey[200]!;
-            });
-          },
-          onExit: (_) {
-            setState(() {
-              backgroundColor = Colors.white;
-            });
-          },
-          child: InkWell(
-            onTap: onTap,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(4.0),
-                color: backgroundColor,
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
-                vertical: verticalPadding,
-              ),
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// ComponentC: widget principale per la visualizzazione dei dettagli dell'anagrafica e del modello 3D
 class ComponentC extends StatefulWidget {
   final void Function(Anagrafica?) onAnagraficaSelected;
   final String username;
@@ -293,9 +25,11 @@ class _ComponentCState extends State<ComponentC> {
   String? _selectedAnagraficaString;
   String? _selectedZone;
   bool _isLoading = true;
-  bool _bodyDropdownOpen = false; // Flag per controllare lo stato del dropdown delle parti del corpo
 
-  // Lista appiattita delle parti del corpo (con eventuali sottocategorie del viso)
+  // Questa variabile servirà a disabilitare i controlli della telecamera quando è aperto un Dialog
+  bool _isDialogOpen = false;
+
+  // Lista appiattita delle parti del corpo
   final List<String> _bodyParts = [
     "Mento e baffi (Viso)",
     "Basette (Viso)",
@@ -363,9 +97,85 @@ class _ComponentCState extends State<ComponentC> {
     ];
   }
 
+  /// Mostra un dialogo di selezione con campo di ricerca.
+  /// [title] è il titolo del dialogo,
+  /// [items] è la lista di elementi selezionabili.
+  /// Ritorna la stringa selezionata, oppure null se non si seleziona nulla.
+  Future<String?> _showSelectionDialog({
+    required String title,
+    required List<String> items,
+  }) async {
+    // Manteniamo una lista locale per il filtraggio.
+    List<String> filteredItems = List.from(items);
+
+    // Dialog che ritorna la stringa selezionata.
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        String query = '';
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              title: Text(title),
+              content: SizedBox(
+                width: 300,
+                height: 400, // Altezza fissa per il dialog, con scroll interno.
+                child: Column(
+                  children: [
+                    // Campo di ricerca
+                    TextField(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'Cerca...',
+                      ),
+                      onChanged: (value) {
+                        setStateDialog(() {
+                          query = value;
+                          filteredItems = items
+                              .where((item) =>
+                                  item.toLowerCase().contains(query.toLowerCase()))
+                              .toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Scrollbar(
+                        thumbVisibility: true,
+                        child: ListView.builder(
+                          itemCount: filteredItems.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredItems[index];
+                            return InkWell(
+                              onTap: () {
+                                Navigator.of(context).pop(item);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                  horizontal: 4.0,
+                                ),
+                                child: Text(item),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Per il dropdown delle anagrafiche, creiamo la lista delle stringhe
+    // Per l'anagrafica, prepariamo la lista di stringhe (nome cognome).
     final List<String> anagraficheItems =
         _anagrafiche.map((ana) => "${ana.nome} ${ana.cognome}").toList();
 
@@ -373,56 +183,121 @@ class _ComponentCState extends State<ComponentC> {
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          // Se l'app è in caricamento mostra il progress indicator,
-          // altrimenti mostra i due dropdown (anagrafica e parte del corpo)
+          // Se in caricamento, mostra il progress indicator, altrimenti mostra i pulsanti
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else
             Row(
               children: [
-                // CustomDropdown per la selezione dell'anagrafica
+                // Bottone per selezionare un'anagrafica
                 Expanded(
-                  child: CustomDropdown(
-                    items: anagraficheItems,
-                    value: _selectedAnagraficaString ?? "Seleziona un'anagrafica",
-                    onChanged: (val) {
-                      Anagrafica? selected;
-                      for (var ana in _anagrafiche) {
-                        if ("${ana.nome} ${ana.cognome}" == val) {
-                          selected = ana;
-                          break;
-                        }
-                      }
+                  child: InkWell(
+                    onTap: () async {
                       setState(() {
-                        _selectedAnagraficaString = val;
-                        _selectedAnagrafica = selected;
+                        _isDialogOpen = true;
                       });
-                      widget.onAnagraficaSelected(selected);
+                      final selectedValue = await _showSelectionDialog(
+                        title: "Seleziona un'anagrafica",
+                        items: anagraficheItems,
+                      );
+                      setState(() {
+                        _isDialogOpen = false;
+                      });
+
+                      if (selectedValue != null) {
+                        Anagrafica? selected;
+                        for (var ana in _anagrafiche) {
+                          final fullName = "${ana.nome} ${ana.cognome}";
+                          if (fullName == selectedValue) {
+                            selected = ana;
+                            break;
+                          }
+                        }
+                        setState(() {
+                          _selectedAnagraficaString = selectedValue;
+                          _selectedAnagrafica = selected;
+                        });
+                        widget.onAnagraficaSelected(selected);
+                      }
                     },
+                    child: Container(
+                      height: 45,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _selectedAnagraficaString ?? "Seleziona un'anagrafica",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            color: Colors.black,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                // CustomDropdown per la selezione della parte del corpo,
-                // con callback per aggiornare lo stato (_bodyDropdownOpen)
+                // Bottone per selezionare la parte del corpo
                 Expanded(
-                  child: CustomDropdown(
-                    items: _bodyParts,
-                    value: _selectedZone ?? _bodyParts[0],
-                    onChanged: (zone) {
+                  child: InkWell(
+                    onTap: () async {
                       setState(() {
-                        _selectedZone = zone;
+                        _isDialogOpen = true;
                       });
-                    },
-                    onDropdownOpen: () {
+                      final selectedValue = await _showSelectionDialog(
+                        title: "Seleziona la zona del corpo",
+                        items: _bodyParts,
+                      );
                       setState(() {
-                        _bodyDropdownOpen = true;
+                        _isDialogOpen = false;
                       });
+
+                      if (selectedValue != null) {
+                        setState(() {
+                          _selectedZone = selectedValue;
+                        });
+                      }
                     },
-                    onDropdownClose: () {
-                      setState(() {
-                        _bodyDropdownOpen = false;
-                      });
-                    },
+                    child: Container(
+                      height: 45,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey, width: 1.0),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _selectedZone ?? _bodyParts[0],
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            color: Colors.black,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -457,24 +332,28 @@ class _ComponentCState extends State<ComponentC> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: _generateKeyValuePairs(_selectedAnagrafica!)
-                                        .map((pair) => Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                              child: Row(
-                                                children: [
-                                                  Text(
-                                                    "  ${pair.keys.first}: ",
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
+                                        .map(
+                                          (pair) => Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 4.0),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "  ${pair.keys.first}: ",
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12,
                                                   ),
-                                                  Text(
-                                                    pair.values.first,
-                                                    style: const TextStyle(fontSize: 12),
-                                                  ),
-                                                ],
-                                              ),
-                                            ))
+                                                ),
+                                                Text(
+                                                  pair.values.first,
+                                                  style:
+                                                      const TextStyle(fontSize: 12),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
                                         .toList(),
                                   ),
                                 ),
@@ -484,18 +363,20 @@ class _ComponentCState extends State<ComponentC> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Visualizzazione del modello 3D, in cui i controlli della telecamera sono disabilitati se il dropdown delle parti del corpo è aperto
+                // Visualizzazione del modello 3D
                 Expanded(
                   flex: 3,
                   child: ThreeDModelViewer(
-                    key: ValueKey('${_selectedAnagrafica?.id}-${_bodyDropdownOpen}'),
+                    // Per forzare la ricostruzione se cambia anagrafica o se il dialog è aperto/chiuso
+                    key: ValueKey(
+                        '${_selectedAnagrafica?.id}-${_isDialogOpen.toString()}'),
                     autoRotate: true,
                     modelUrl: _selectedAnagrafica != null &&
                             _selectedAnagrafica!.gender.toLowerCase() == "donna"
                         ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
                         : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
-                    // Se il dropdown è aperto, disabilitiamo i controlli della telecamera
-                    cameraControls: !_bodyDropdownOpen,
+                    // Se il dialog è aperto, disabilitiamo i controlli della telecamera
+                    cameraControls: !_isDialogOpen,
                   ),
                 ),
               ],
