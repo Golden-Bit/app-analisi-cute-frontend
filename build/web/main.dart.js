@@ -42456,7 +42456,7 @@ A.RS.prototype={
 an(){var s=this
 s.aF()
 s.w=s.z[0]
-s.r="Seleziona un'anagrafica"
+s.r="Seleziona"
 s.xR()},
 xR(){var s=0,r=A.M(t.H),q=1,p,o=this,n,m,l,k,j
 var $async$xR=A.N(function(a,b){if(a===1){p=b

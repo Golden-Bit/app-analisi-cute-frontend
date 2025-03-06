@@ -59,7 +59,7 @@ class _ComponentCState extends State<ComponentC> {
   void initState() {
     super.initState();
     _selectedZone = _bodyParts[0]; // Valore predefinito
-    _selectedAnagraficaString = "Seleziona un'anagrafica";
+    _selectedAnagraficaString = "Seleziona";
     _fetchAnagrafiche();
   }
 
