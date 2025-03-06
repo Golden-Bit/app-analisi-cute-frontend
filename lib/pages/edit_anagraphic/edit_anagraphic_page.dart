@@ -128,6 +128,7 @@ class _EditAnagraficaPageState extends State<EditAnagraficaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Modifica Paziente',

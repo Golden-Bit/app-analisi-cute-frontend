@@ -112,6 +112,7 @@ class _NewAnagraficaPageState extends State<NewAnagraficaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
           'Nuovo Paziente',

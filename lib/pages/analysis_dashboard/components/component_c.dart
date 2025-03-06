@@ -233,9 +233,9 @@ class _ComponentCState extends State<ComponentC> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _selectedAnagraficaString ?? "Seleziona un'anagrafica",
+                            _selectedAnagraficaString ?? "Seleziona",
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: Colors.black,
                             ),
@@ -286,7 +286,7 @@ class _ComponentCState extends State<ComponentC> {
                           Text(
                             _selectedZone ?? _bodyParts[0],
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                               color: Colors.black,
                             ),
