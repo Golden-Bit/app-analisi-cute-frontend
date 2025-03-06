@@ -68,7 +68,8 @@ class _ComponentCState extends State<ComponentC> {
       _isLoading = true;
     });
     try {
-      final anagrafiche = await _api.getAnagrafiche(widget.username, widget.password);
+      final anagrafiche =
+          await _api.getAnagrafiche(widget.username, widget.password);
       setState(() {
         _anagrafiche = anagrafiche;
         _isLoading = false;
@@ -78,7 +79,10 @@ class _ComponentCState extends State<ComponentC> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Errore durante il caricamento delle anagrafiche: $e')),
+        SnackBar(
+          content:
+              Text('Errore durante il caricamento delle anagrafiche: $e'),
+        ),
       );
     }
   }
@@ -100,15 +104,16 @@ class _ComponentCState extends State<ComponentC> {
   /// Mostra un dialogo di selezione con campo di ricerca.
   /// [title] è il titolo del dialogo,
   /// [items] è la lista di elementi selezionabili.
+  /// [selectedItem] è l'eventuale valore già selezionato (per evidenziarlo in cima).
   /// Ritorna la stringa selezionata, oppure null se non si seleziona nulla.
   Future<String?> _showSelectionDialog({
     required String title,
     required List<String> items,
+    String? selectedItem,
   }) async {
     // Manteniamo una lista locale per il filtraggio.
     List<String> filteredItems = List.from(items);
 
-    // Dialog che ritorna la stringa selezionata.
     return showDialog<String>(
       context: context,
       barrierDismissible: true,
@@ -116,6 +121,24 @@ class _ComponentCState extends State<ComponentC> {
         String query = '';
         return StatefulBuilder(
           builder: (context, setStateDialog) {
+            // Applichiamo il filtro
+            List<String> tempFiltered = items
+                .where((item) =>
+                    item.toLowerCase().contains(query.toLowerCase()))
+                .toList();
+
+            // Se c'è un elemento selezionato e appare nei risultati del filtro,
+            // lo togliamo dalla posizione originale e lo mettiamo in testa,
+            // per evidenziarlo poi con un bordo più spesso.
+            if (selectedItem != null &&
+                selectedItem != 'Seleziona' &&
+                tempFiltered.contains(selectedItem)) {
+              tempFiltered.remove(selectedItem);
+              tempFiltered.insert(0, selectedItem);
+            }
+
+            filteredItems = tempFiltered;
+
             return AlertDialog(
               title: Text(title),
               content: SizedBox(
@@ -132,10 +155,6 @@ class _ComponentCState extends State<ComponentC> {
                       onChanged: (value) {
                         setStateDialog(() {
                           query = value;
-                          filteredItems = items
-                              .where((item) =>
-                                  item.toLowerCase().contains(query.toLowerCase()))
-                              .toList();
                         });
                       },
                     ),
@@ -147,11 +166,21 @@ class _ComponentCState extends State<ComponentC> {
                           itemCount: filteredItems.length,
                           itemBuilder: (context, index) {
                             final item = filteredItems[index];
+                            final bool isSelectedItem = (item == selectedItem);
+
                             return InkWell(
                               onTap: () {
                                 Navigator.of(context).pop(item);
                               },
-                              child: Padding(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: isSelectedItem
+                                      ? Border.all(
+                                          color: Colors.black,
+                                          width: 2.0,
+                                        )
+                                      : null,
+                                ),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 8.0,
                                   horizontal: 4.0,
@@ -199,6 +228,7 @@ class _ComponentCState extends State<ComponentC> {
                       final selectedValue = await _showSelectionDialog(
                         title: "Seleziona un'anagrafica",
                         items: anagraficheItems,
+                        selectedItem: _selectedAnagraficaString,
                       );
                       setState(() {
                         _isDialogOpen = false;
@@ -222,29 +252,22 @@ class _ComponentCState extends State<ComponentC> {
                     },
                     child: Container(
                       height: 45,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         border: Border(
                           bottom: BorderSide(color: Colors.grey, width: 1.0),
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _selectedAnagraficaString ?? "Seleziona",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_drop_down,
-                            color: Colors.black,
-                          ),
-                        ],
+                      child: Text(
+                        _selectedAnagraficaString ?? "Seleziona",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ),
@@ -260,6 +283,7 @@ class _ComponentCState extends State<ComponentC> {
                       final selectedValue = await _showSelectionDialog(
                         title: "Seleziona la zona del corpo",
                         items: _bodyParts,
+                        selectedItem: _selectedZone,
                       );
                       setState(() {
                         _isDialogOpen = false;
@@ -273,29 +297,22 @@ class _ComponentCState extends State<ComponentC> {
                     },
                     child: Container(
                       height: 45,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         border: Border(
                           bottom: BorderSide(color: Colors.grey, width: 1.0),
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _selectedZone ?? _bodyParts[0],
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const Icon(
-                            Icons.arrow_drop_down,
-                            color: Colors.black,
-                          ),
-                        ],
+                      child: Text(
+                        _selectedZone ?? _bodyParts[0],
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ),
@@ -330,12 +347,15 @@ class _ComponentCState extends State<ComponentC> {
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: _generateKeyValuePairs(_selectedAnagrafica!)
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: _generateKeyValuePairs(
+                                            _selectedAnagrafica!)
                                         .map(
                                           (pair) => Padding(
                                             padding: const EdgeInsets.symmetric(
-                                                vertical: 4.0),
+                                              vertical: 4.0,
+                                            ),
                                             child: Row(
                                               children: [
                                                 Text(
@@ -347,8 +367,9 @@ class _ComponentCState extends State<ComponentC> {
                                                 ),
                                                 Text(
                                                   pair.values.first,
-                                                  style:
-                                                      const TextStyle(fontSize: 12),
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                  ),
                                                 ),
                                               ],
                                             ),
