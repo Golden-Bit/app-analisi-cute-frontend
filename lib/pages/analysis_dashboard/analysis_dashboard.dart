@@ -3,17 +3,13 @@ import 'dart:typed_data';
 
 import 'package:app_analisi_cute/backend_sdk/analyze.dart';
 import 'package:app_analisi_cute/backend_sdk/patients.dart';
-//import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/webrtc_camera.dart';
-//import 'package:app_analisi_cute/pages/analysis_dashboard/components/sub_components/videoplayer_camera.dart';
 import 'package:flutter/material.dart';
 import 'components/sub_components/camera_web_.dart';
-//import 'components/sub_components/camera_android.dart';
 import 'components/component_a.dart';
 import 'components/component_c.dart';
 import 'components/component_d.dart';
 import 'components/component_b.dart';
 import 'dart:html' as html; // Questo import funziona solo su Web
-//import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
 
 class AnalysisDashboard extends StatefulWidget {
   final String username;
@@ -31,204 +27,302 @@ class AnalysisDashboard extends StatefulWidget {
 
 class _AnalysisDashboardState extends State<AnalysisDashboard> {
   final AnalysisApi _api = AnalysisApi(); // API instance
-  final Map<String, List<String>> _imagesByAnalysis = {}; // Map for images
-  final Map<String, Map<String, dynamic>> _resultsByAnalysis = {}; // Results by type
-  final Map<String, int> _analysisScores = {}; // Unified scores for ComponentD
-  String _selectedAnalysis = "Idratazione"; // Current selected type
-  bool _isAnalyzing = false; // Track if analysis is in progress
+
+  // Le mappe per i risultati e i punteggi rimangono indicizzate per zona e per tipo di analisi
+  Map<String, Map<String, Map<String, dynamic>>> _resultsByZone = {};
+  Map<String, Map<String, int>> _analysisScoresByZone = {};
+
+  // Ora le immagini sono gestite separatamente per zona (condivise tra i diversi tipi di analisi della stessa zona)
+  Map<String, List<String>> _imagesByZone = {};
+
+  // Tipo di analisi corrente (es. "Idratazione", "Strato lipidico", ecc.)
+  String _selectedAnalysis = "Idratazione";
+  // Zona corrente selezionata; di default la prima nell'elenco
+  String _selectedZone = "Mento e baffi (Viso)";
+
+  bool _isAnalyzing = false; // Stato dell'analisi manuale
   String? _selectedPatientId; // ID del paziente selezionato
-  final AnagraficaApi __api = AnagraficaApi(); // SDK API per le anagrafiche
+  final AnagraficaApi __api = AnagraficaApi(); // API per le anagrafiche
+
+  List<Anagrafica> _anagrafiche = []; // Lista delle anagrafiche
+
+  // Variabili per l'analisi automatica
+  bool _isAutomaticAnalysisActive = false;
+  List<String> _automaticZones = [];
+  int _currentAutomaticZoneIndex = 0;
+  List<String> _completedAutomaticZones = [];
+
+  // GlobalKey per poter aggiornare la zona in ComponentC
+  final GlobalKey<ComponentCState> _componentCKey = GlobalKey<ComponentCState>();
+
+  // Elenco di tutte le zone (da usare anche in ComponentC)
+  final List<String> _allZones = [
+    "Mento e baffi (Viso)",
+    "Basette (Viso)",
+    "Sopracciglia (Viso)",
+    "Guance (Viso)",
+    "Orecchie (Testa)",
+    "Nuca (Collo)",
+    "Collo (Collo)",
+    "Seno (Torace)",
+    "Ascelle (Torace)",
+    "Spalle (Torace)",
+    "Petto (Torace)",
+    "Addome (Addome)",
+    "Schiena (Dorso)",
+    "Linea alba (Addome)",
+    "Inguine (Pelvi)",
+    "Braccia (Arti Superiori)",
+    "Mani (Arti Superiori)",
+    "Gambe (Arti Inferiori)",
+    "Cosce (Arti Inferiori)",
+    "Gambaletto (Arti Inferiori)",
+    "Piedi (Arti Inferiori)",
+    "Ano (Pelvi)",
+  ];
+
+  // Elenco dei tipi di analisi (uguale a quello usato in ComponentA)
+  final List<String> _analysisTypes = [
+    "Idratazione",
+    "Strato lipidico",
+    "Elasticità",
+    "Cheratina",
+    "Pelle sensibile",
+    "Macchie cutanee",
+    "Tonalità",
+    "Densità pilifera",
+    "Pori ostruiti",
+  ];
 
   void _onPatientSelected(Anagrafica? selectedPatient) {
     setState(() {
-      _selectedPatientId = selectedPatient?.id; // Aggiorna lo stato con l'ID del paziente selezionato
+      _selectedPatientId = selectedPatient?.id;
     });
   }
 
-
-List<Anagrafica> _anagrafiche = []; // Lista di anagrafiche
-
   Future<void> _fetchAnagrafiche() async {
-    setState(() {
-      //_isLoading = true;
-    });
     try {
       final anagrafiche = await __api.getAnagrafiche(widget.username, widget.password);
       setState(() {
         _anagrafiche = anagrafiche;
-        //_isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        //_isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Errore durante il caricamento delle anagrafiche: $e')),
       );
     }
   }
 
-Anagrafica? _getAnagraficaById(String patientId) {
-  // Supponendo che _anagrafiche sia una lista di tutte le anagrafiche disponibili
-  return _anagrafiche.firstWhere(
-    (anagrafica) => anagrafica.id == patientId,
-    orElse: () => null!,
-  );
-}
-
-void _generateAndDownloadReport() async {
-  if (_selectedPatientId == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Seleziona un paziente prima di generare il report.')),
-    );
-    return;
-  }
-
-  // Recupera i dati dell'anagrafica e dei risultati
-  final selectedAnagrafica = _getAnagraficaById(_selectedPatientId!);
-  if (selectedAnagrafica == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Errore: impossibile trovare i dati del paziente.')),
-    );
-    return;
-  }
-
-  // Genera l'HTML dinamicamente
-final reportHtml = generateReportHtml(
-  anagrafica: selectedAnagrafica,
-  analysisResults: _resultsByAnalysis,
-  imagesByAnalysis: _imagesByAnalysis, // parametro aggiunto
-);
-
-  // Crea un blob HTML e consenti il download
-  try {
-    final blob = html.Blob([reportHtml], 'text/html');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
-      ..target = 'blank'
-      ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
-    ..click();
-    html.Url.revokeObjectUrl(url);
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Errore durante la generazione del report: $e')),
+  Anagrafica? _getAnagraficaById(String patientId) {
+    // Restituisce la prima anagrafica che corrisponde all'ID oppure null se non trovata
+    return _anagrafiche.firstWhere(
+      (anagrafica) => anagrafica.id == patientId,
+      orElse: () => null!,
     );
   }
-}
 
+  void _generateAndDownloadReport() async {
+    if (_selectedPatientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Seleziona un paziente prima di generare il report.')),
+      );
+      return;
+    }
+
+    final selectedAnagrafica = _getAnagraficaById(_selectedPatientId!);
+    if (selectedAnagrafica == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Errore: impossibile trovare i dati del paziente.')),
+      );
+      return;
+    }
+
+    // Recupera i dati relativi alla zona corrente
+    final analysisResultsForZone = _resultsByZone[_selectedZone]!;
+    final imagesForZone = _imagesByZone[_selectedZone]!;
+
+    final reportHtml = generateReportHtml(
+      anagrafica: selectedAnagrafica,
+      zone: _selectedZone,
+      analysisResults: analysisResultsForZone,
+      images: imagesForZone,
+    );
+
+    try {
+      final blob = html.Blob([reportHtml], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..target = 'blank'
+        ..download = 'report_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}_$_selectedZone.html'
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Errore durante la generazione del report: $e')),
+      );
+    }
+  }
+
+  Future<void> _performAnalysis() async {
+    if (_selectedPatientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi.')),
+      );
+      return;
+    }
+
+    // Prepara le immagini per la zona corrente (le immagini sono ora gestite direttamente come lista)
+    final allImages = _imagesByZone[_selectedZone] ?? [];
+
+    setState(() {
+      _isAnalyzing = true;
+    });
+
+    try {
+      print("🔄 Inizio analisi per paziente $_selectedPatientId con ${allImages.length} immagini per la zona $_selectedZone.");
+
+      final response = await _api.analyzeSkin(
+        username: widget.username,
+        password: widget.password,
+        patientId: _selectedPatientId!,
+        images: allImages, // Le immagini sono già in Base64
+      );
+
+      print("✅ Analisi completata. Risultati ricevuti: ${response.keys.toList()}");
+
+      setState(() {
+        // Aggiorna solo per la zona corrente
+        response.forEach((analysisType, value) {
+          if (analysisType == 'bod_zone' && value is String) {
+            // Eventuale gestione della chiave "bod_zone" (opzionale)
+          } else if (value is Map<String, dynamic>) {
+            _resultsByZone[_selectedZone]![analysisType] = value;
+            _analysisScoresByZone[_selectedZone]![analysisType] = value["valore"] ?? 0;
+          }
+        });
+        _isAnalyzing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isAnalyzing = false;
+      });
+      print("❌ Errore durante l'analisi: $e");
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text("Errore"),
+            content: Text("Si è verificato un errore: $e"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  // Avvio della modalità di analisi automatica
+  void _startAutomaticAnalysis() {
+    if (_selectedPatientId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi automatica.')),
+      );
+      return;
+    }
+    final selectedPatient = _getAnagraficaById(_selectedPatientId!);
+    if (selectedPatient == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Seleziona un paziente valido.')),
+      );
+      return;
+    }
+    // Costruisci la lista delle zone in base al genere:
+    if (selectedPatient.gender.toLowerCase() == "donna") {
+      _automaticZones = [
+        "Basette (Viso)",
+        "Petto (Torace)",
+        "Braccia (Arti Superiori)",
+        "Addome (Addome)",
+        "Schiena (Dorso)",
+        "Inguine (Pelvi)",
+        "Gambe (Arti Inferiori)"
+      ];
+    } else {
+      _automaticZones = [
+        "Basette (Viso)",
+        "Petto (Torace)",
+        "Braccia (Arti Superiori)",
+        "Addome (Addome)",
+        "Schiena (Dorso)",
+        "Gambe (Arti Inferiori)"
+      ];
+    }
+    setState(() {
+      _isAutomaticAnalysisActive = true;
+      _completedAutomaticZones = [];
+      _currentAutomaticZoneIndex = 0;
+      // Aggiorna la zona corrente con la prima zona automatica
+      _selectedZone = _automaticZones[0];
+    });
+    if (_componentCKey.currentState != null) {
+      _componentCKey.currentState!.updateZone(_automaticZones[0]);
+    }
+  }
+
+  // Metodo richiamato al click su "Prossimo" nella modalità automatica
+  void _onAutomaticAnalysisNext() {
+    setState(() {
+      _currentAutomaticZoneIndex++;
+      if (_currentAutomaticZoneIndex < _automaticZones.length) {
+        _selectedZone = _automaticZones[_currentAutomaticZoneIndex];
+        if (_componentCKey.currentState != null) {
+          _componentCKey.currentState!.updateZone(_automaticZones[_currentAutomaticZoneIndex]);
+        }
+      } else {
+        _isAutomaticAnalysisActive = false;
+      }
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    // Initialize with default values
-    const analysisTypes = [
-      "Idratazione",
-      "Strato lipidico",
-      "Elasticità",
-      "Cheratina",
-      "Pelle sensibile",
-      "Macchie cutanee",
-      "Tonalità",
-      "Densità pilifera",
-      "Pori ostruiti",
-    ];
-
     _fetchAnagrafiche();
-    
-    for (var type in analysisTypes) {
-      _imagesByAnalysis[type] = [];
-      _resultsByAnalysis[type] = {
-        "valore": 0,
-        "descrizione": "Nessun dato disponibile.",
-        "valutazione_professionale": "Nessuna valutazione disponibile.",
-        "consigli": "Nessun consiglio disponibile.",
-      };
-      _analysisScores[type] = 0; // Initialize scores with zero
+
+    // Inizializza le mappe per ciascuna zona con i dati di default per ogni tipo di analisi
+    for (var zone in _allZones) {
+      // Inizializza le immagini come lista vuota per ogni zona
+      _imagesByZone[zone] = [];
+      _resultsByZone[zone] = {};
+      _analysisScoresByZone[zone] = {};
+      for (var type in _analysisTypes) {
+        _resultsByZone[zone]![type] = {
+          "valore": 0,
+          "descrizione": "Nessun dato disponibile.",
+          "valutazione_professionale": "Nessuna valutazione disponibile.",
+          "consigli": "Nessun consiglio disponibile.",
+        };
+        _analysisScoresByZone[zone]![type] = 0;
+      }
     }
   }
 
-void _updateImages(String analysisType, List<String> imagesBase64) {
-  setState(() {
-    _imagesByAnalysis[analysisType] = imagesBase64;
-  });
-}
+  // Aggiorna le immagini per la zona corrente (le immagini sono condivise per tutti i tipi di analisi nella stessa zona)
+  void _updateImages(String analysisType, List<String> imagesBase64) {
+    setState(() {
+      _imagesByZone[_selectedZone] = imagesBase64;
+    });
+  }
 
   void _onAnalysisSelected(String analysisType) {
     setState(() {
       _selectedAnalysis = analysisType;
     });
   }
-
-Future<void> _performAnalysis() async {
-  if (_selectedPatientId == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi.')),
-    );
-    return;
-  }
-
-  // ✅ Le immagini sono già in Base64, quindi non dobbiamo convertirle
-  final allImages = _imagesByAnalysis.map((type, imagesBase64) {
-    return MapEntry(type, imagesBase64);
-  });
-
-  setState(() {
-    _isAnalyzing = true;
-  });
-
-  try {
-    print("🔄 Inizio analisi per paziente $_selectedPatientId con ${allImages.length} categorie di immagini.");
-
-    final response = await _api.analyzeSkin(
-      username: widget.username,
-      password: widget.password,
-      patientId: _selectedPatientId!,
-      images: allImages.values.expand((list) => list).toList(), // ✅ Le immagini sono già in Base64
-    );
-
-    print("✅ Analisi completata. Risultati ricevuti: ${response.keys.toList()}");
-
-setState(() {
-  for (var entry in response.entries) {
-    final analysisType = entry.key;
-    final value = entry.value;
-
-    if (analysisType == 'bod_zone' && value is String) {
-      // Se la chiave è "bod_zone" ed è una stringa, gestiscila separatamente
-      _resultsByAnalysis[analysisType] = {'zone': value};
-    } else if (value is Map<String, dynamic>) {
-      // Se il valore è un Map<String, dynamic>, procedi normalmente
-      _resultsByAnalysis[analysisType] = value;
-      _analysisScores[analysisType] = value["valore"] ?? 0;
-    }
-  }
-  _isAnalyzing = false;
-});
-  } catch (e) {
-    setState(() {
-      _isAnalyzing = false;
-    });
-
-    print("❌ Errore durante l'analisi: $e");
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text("Errore"),
-          content: Text("Si è verificato un errore: $e"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text("OK"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +334,10 @@ setState(() {
       spreadRadius: 0.5,
     );
 
-    final analysisResult = _resultsByAnalysis[_selectedAnalysis]!;
+    // Recupera i dati relativi alla zona corrente e al tipo di analisi selezionato
+    final currentResults = _resultsByZone[_selectedZone]!;
+    final analysisResult = currentResults[_selectedAnalysis]!;
+    final currentScores = _analysisScoresByZone[_selectedZone]!;
 
     return Scaffold(
       appBar: AppBar(
@@ -253,6 +350,24 @@ setState(() {
         ),
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
+          // Pulsante per avviare l'Analisi Automatica
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              onPressed: _isAnalyzing || _isAutomaticAnalysisActive ? null : _startAutomaticAnalysis,
+              child: const Text(
+                'Analisi Automatica',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+          // Pulsante per l'Analisi manuale
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: ElevatedButton(
@@ -269,23 +384,23 @@ setState(() {
               ),
             ),
           ),
-Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-    child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.black,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-      // Qui viene richiamata la funzione per generare il report
-      onPressed: _generateAndDownloadReport,
-      child: const Text(
-        'Genera Report',
-        style: TextStyle(color: Colors.white),
-      ),
-    ),
-  ),
+          // Pulsante per generare il Report
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              onPressed: _generateAndDownloadReport,
+              child: const Text(
+                'Genera Report',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
         ],
       ),
       body: Container(
@@ -298,6 +413,7 @@ Padding(
                 Expanded(
                   child: Row(
                     children: [
+                      // Colonna sinistra: ComponentA e ComponentC
                       Expanded(
                         flex: 1,
                         child: Container(
@@ -320,7 +436,14 @@ Padding(
                               Expanded(
                                 flex: 1,
                                 child: ComponentC(
+                                  key: _componentCKey,
                                   onAnagraficaSelected: _onPatientSelected,
+                                  // Callback per aggiornare la zona corrente
+                                  onZoneSelected: (zone) {
+                                    setState(() {
+                                      _selectedZone = zone;
+                                    });
+                                  },
                                   username: widget.username,
                                   password: widget.password,
                                 ),
@@ -330,6 +453,7 @@ Padding(
                         ),
                       ),
                       const SizedBox(width: 12),
+                      // Colonna centrale: Camera Gallery e messaggi per l'analisi automatica
                       Expanded(
                         flex: 2,
                         child: Container(
@@ -337,15 +461,116 @@ Padding(
                             borderRadius: BorderRadius.circular(borderRadius),
                             color: Colors.white,
                           ),
-                          child: CameraGalleryWebWidget(
-  onImagesUpdated: (List<String> imagesBase64) {
-    _updateImages(_selectedAnalysis, imagesBase64);
-  },
-  initialImages: _imagesByAnalysis[_selectedAnalysis] ?? [],
-),
+                          child: Column(
+                            children: [
+                              // Blocca relativo alla modalità automatica
+                              if (_isAutomaticAnalysisActive && _currentAutomaticZoneIndex < _automaticZones.length)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                                  child: Card(
+                                    color: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                      side: const BorderSide(color: Colors.black, width: 1),
+                                    ),
+                                    elevation: 4,
+                                    child: Container(
+                                      height: 100,
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "${_currentAutomaticZoneIndex + 1}/${_automaticZones.length}",
+                                            style: const TextStyle(fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Expanded(
+                                            child: Center(
+                                              child: Text(
+                                                "Effettua le fotografie della zona: ${_automaticZones[_currentAutomaticZoneIndex]}",
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(fontSize: 16),
+                                              ),
+                                            ),
+                                          ),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              // Pulsante "Annulla"
+                                              ElevatedButton(
+                                                style: ButtonStyle(
+                                                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                                                    (states) => states.contains(MaterialState.hovered)
+                                                        ? Colors.black
+                                                        : Colors.white,
+                                                  ),
+                                                  foregroundColor: MaterialStateProperty.resolveWith<Color>(
+                                                    (states) => states.contains(MaterialState.hovered)
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                  ),
+                                                  side: MaterialStateProperty.all(const BorderSide(color: Colors.black)),
+                                                  shape: MaterialStateProperty.all(
+                                                    RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                  ),
+                                                ),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _isAutomaticAnalysisActive = false;
+                                                  });
+                                                },
+                                                child: const Text("Annulla"),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              // Pulsante "Prossimo"
+                                              ElevatedButton(
+                                                style: ButtonStyle(
+                                                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                                                    (states) => states.contains(MaterialState.hovered)
+                                                        ? Colors.black
+                                                        : Colors.white,
+                                                  ),
+                                                  foregroundColor: MaterialStateProperty.resolveWith<Color>(
+                                                    (states) => states.contains(MaterialState.hovered)
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                  ),
+                                                  side: MaterialStateProperty.all(const BorderSide(color: Colors.black)),
+                                                  shape: MaterialStateProperty.all(
+                                                    RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                  ),
+                                                ),
+                                                onPressed: _onAutomaticAnalysisNext,
+                                                child: const Text("Prossimo"),
+                                              ),
+                                            ],
+                                          )
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Widget della Camera Gallery
+                              Expanded(
+                                child: CameraGalleryWebWidget(
+                                  onImagesUpdated: (List<String> imagesBase64) {
+                                    _updateImages(_selectedAnalysis, imagesBase64);
+                                  },
+                                  // Le immagini vengono lette direttamente dalla lista associata alla zona corrente
+                                  initialImages: _imagesByZone[_selectedZone] ?? [],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
+                      // Colonna destra: ComponentB e ComponentD
                       Expanded(
                         flex: 1,
                         child: Container(
@@ -362,22 +587,17 @@ Padding(
                                     ? const Center(child: CircularProgressIndicator())
                                     : ComponentB(
                                         score: analysisResult["valore"] ?? 0,
-                                        description: analysisResult["descrizione"] ??
-                                            "Nessun dato disponibile.",
-                                        professionalEvaluation:
-                                            analysisResult["valutazione_professionale"] ??
-                                                "Nessuna valutazione disponibile.",
-                                        advice: analysisResult["consigli"] ??
-                                            "Nessun consiglio disponibile.",
+                                        description: analysisResult["descrizione"] ?? "Nessun dato disponibile.",
+                                        professionalEvaluation: analysisResult["valutazione_professionale"] ?? "Nessuna valutazione disponibile.",
+                                        advice: analysisResult["consigli"] ?? "Nessun consiglio disponibile.",
                                       ),
                               ),
                               const Divider(thickness: 1, color: Colors.grey, height: 1),
                               Expanded(
                                 flex: 1,
                                 child: ComponentD(
-                                  modelSrc:
-                                      'https://www.goldbitweb.com/api1/models/skin_with_base_color.glb',
-                                  analysisData: _analysisScores,
+                                  modelSrc: 'https://www.goldbitweb.com/api1/models/skin_with_base_color.glb',
+                                  analysisData: currentScores,
                                 ),
                               ),
                             ],
@@ -395,13 +615,11 @@ Padding(
     );
   }
 }
-
-
-
 String generateReportHtml({
   required Anagrafica anagrafica,
+  required String zone,
   required Map<String, Map<String, dynamic>> analysisResults,
-  required Map<String, List<String>> imagesByAnalysis, // parametro aggiunto
+  required List<String> images,
 }) {
   return '''
 <!DOCTYPE html>
@@ -438,12 +656,17 @@ String generateReportHtml({
       background-color: #f2f2f2;
       text-align: left;
     }
+    .image-container img {
+      max-width: 200px;
+      margin: 5px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Report Analisi della Pelle</h1>
     <h3>Generato per: ${anagrafica.nome} ${anagrafica.cognome}</h3>
+    <h4>Zona del corpo: ${zone}</h4>
   </div>
 
   <div class="section">
@@ -513,25 +736,18 @@ String generateReportHtml({
       }).join()}
     </table>
   </div>
-      <div class="section">
-      <div class="section-title">Immagini</div>
-      ${imagesByAnalysis.entries.map((entry) {
-        final analysisType = entry.key;
-        final images = entry.value;
-        if (images.isNotEmpty) {
-          return '''
-            <div class="image-container">
-              <h4>${analysisType}</h4>
-              ${images.map((imgBase64) => '<img src="data:image/png;base64,$imgBase64" />').join()}
-            </div>
-          ''';
-        } else {
-          return '';
-        }
-      }).join()}
-    </div>
+
+  <div class="section">
+    <div class="section-title">Immagini</div>
+    ${images.isNotEmpty 
+      ? '''
+      <div class="image-container">
+        ${images.map((imgBase64) => '<img src="data:image/png;base64,$imgBase64" />').join()}
+      </div>
+      '''
+      : '<p>Nessuna immagine catturata</p>'}
+  </div>
 </body>
 </html>
   ''';
 }
-

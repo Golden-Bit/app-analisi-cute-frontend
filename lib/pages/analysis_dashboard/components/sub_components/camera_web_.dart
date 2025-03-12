@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class CameraGalleryWebWidget extends StatefulWidget {
-  final List<String> initialImages; // Immagini in Base64
+  final List<String> initialImages; // Immagini in Base64 (associate alla zona corrente)
   final double containerWidth; // Larghezza del contenitore
   final double galleryHeight; // Altezza della galleria
   final Function(List<String>) onImagesUpdated; // Callback per aggiornare le immagini
@@ -23,7 +23,6 @@ class CameraGalleryWebWidget extends StatefulWidget {
 }
 
 class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
-  //String _videoUrl = "http://evnq5soayg5gt.local:8081/video";
   String _videoUrl = "http://127.0.0.1:8081/video";
   List<String> _capturedImages = []; // Lista immagini in Base64
   final ScrollController _scrollController = ScrollController();
@@ -39,6 +38,17 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     super.initState();
     _capturedImages = List.from(widget.initialImages);
     _setupMjpegStream();
+  }
+
+  @override
+  void didUpdateWidget(covariant CameraGalleryWebWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Se il widget viene ricostruito con immagini differenti (es. cambio zona), aggiorna la lista
+    if (oldWidget.initialImages != widget.initialImages) {
+      setState(() {
+        _capturedImages = List.from(widget.initialImages);
+      });
+    }
   }
 
   /// Configura lo stream MJPEG
@@ -116,29 +126,28 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     );
   }
 
-  /// Cattura immagine dello stream MJPEG
-  void _capturePhoto() async {
-    if (_mjpegImage.complete == false) {
-      print("⚠️ L'immagine non è ancora completamente caricata.");
-      return;
-    }
-
-    try {
-      _canvas.width = _mjpegImage.width;
-      _canvas.height = _mjpegImage.height;
-      _ctx.drawImage(_mjpegImage, 0, 0);
-
-      String base64Image = _canvas.toDataUrl("image/png");
-      setState(() {
-        _capturedImages.add(base64Image);
-      });
-
-      widget.onImagesUpdated(_capturedImages);
-      print("📸 Foto catturata con successo!");
-    } catch (e) {
-      print("❌ Errore durante lo screenshot: $e");
-    }
+void _capturePhoto() async {
+  if (!(_mjpegImage.complete ?? false)) {
+    print("⚠️ L'immagine non è ancora completamente caricata.");
+    return;
   }
+
+  try {
+    _canvas.width = _mjpegImage.width;
+    _canvas.height = _mjpegImage.height;
+    _ctx.drawImage(_mjpegImage, 0, 0);
+
+    String base64Image = _canvas.toDataUrl("image/png");
+    setState(() {
+      _capturedImages.add(base64Image);
+    });
+
+    widget.onImagesUpdated(_capturedImages);
+    print("📸 Foto catturata con successo!");
+  } catch (e) {
+    print("❌ Errore durante lo screenshot: $e");
+  }
+}
 
   /// Elimina immagine dalla galleria
   void _deleteImage(int index) {
@@ -171,7 +180,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Contenitore video sopra
+        // Contenitore video superiore
         Container(
           width: widget.containerWidth,
           child: AspectRatio(
@@ -184,7 +193,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                     : _hasError
                         ? const Text("Errore nel caricamento dello stream MJPEG")
                         : HtmlElementView(viewType: 'mjpeg-stream-view'),
-                // Pulsante screenshot
+                // Pulsante per catturare l'immagine
                 Positioned(
                   bottom: 24,
                   child: GestureDetector(
@@ -201,7 +210,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                     ),
                   ),
                 ),
-                // Icona settings per cambiare URL
+                // Icona per cambiare l'URL dello stream
                 Positioned(
                   top: 16,
                   right: 16,
@@ -223,7 +232,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
           ),
         ),
         const SizedBox(height: 12),
-        // Galleria immagini sotto
+        // Galleria immagini inferiore
         Container(
           width: widget.containerWidth,
           height: widget.galleryHeight,
@@ -241,12 +250,17 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
             ],
           ),
           child: _capturedImages.isEmpty
-              ? const Center(child: Text('Nessuna immagine catturata', style: TextStyle(fontSize: 16, color: Colors.grey)))
+              ? const Center(
+                  child: Text(
+                    'Nessuna immagine catturata',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                )
               : Row(
                   children: [
                     IconButton(
-                      onPressed: _scrollLeft, 
-                      icon: const Icon(Icons.arrow_back)
+                      onPressed: _scrollLeft,
+                      icon: const Icon(Icons.arrow_back),
                     ),
                     Expanded(
                       child: ListView.builder(
@@ -258,14 +272,12 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                             padding: const EdgeInsets.symmetric(horizontal: 8.0),
                             child: Stack(
                               children: [
-                                // L'immagine occupa tutta l'altezza della galleria
                                 Image.network(
                                   _capturedImages[index],
                                   width: 100,
                                   height: double.infinity,
                                   fit: BoxFit.cover,
                                 ),
-                                // Icona 'X' per eliminare l'immagine, posizionata in alto a destra
                                 Positioned(
                                   top: 0,
                                   right: 0,
@@ -288,8 +300,8 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
                       ),
                     ),
                     IconButton(
-                      onPressed: _scrollRight, 
-                      icon: const Icon(Icons.arrow_forward)
+                      onPressed: _scrollRight,
+                      icon: const Icon(Icons.arrow_forward),
                     ),
                   ],
                 ),

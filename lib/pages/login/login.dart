@@ -1,6 +1,7 @@
 import 'package:app_analisi_cute/pages/home/home.dart';
 import 'package:flutter/material.dart';
 import 'package:app_analisi_cute/backend_sdk/users.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -29,6 +30,11 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await _api4Sdk.loginUser(username: username, password: password);
 
+      // Salviamo le credenziali nel local storage
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('username', username);
+      await prefs.setString('password', password);
+
       // Naviga alla home page con passaggio delle credenziali
       Navigator.pushReplacement(
         context,
@@ -49,16 +55,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      /*appBar: AppBar(
-        title: const Text(
-          'Login',
-          style: TextStyle(color: Colors.black), // Testo nero
-        ),
-        backgroundColor: Colors.white, // Sfondo bianco
-        elevation: 4, // Ombra leggera
-        shadowColor: Colors.grey.withOpacity(0.4), // Colore dell'ombra
-        iconTheme: const IconThemeData(color: Colors.black), // Icone nere
-      ),*/
       body: Container(
         color: Colors.white, 
         child: Center(
@@ -124,4 +120,3 @@ class _LoginPageState extends State<LoginPage> {
     ));
   }
 }
-

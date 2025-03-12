@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_analisi_cute/pages/login/login.dart';
+import 'package:app_analisi_cute/pages/home/home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,7 +9,7 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
-  
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -19,7 +21,7 @@ class MyApp extends StatelessWidget {
 
 class SplashPage extends StatefulWidget {
   const SplashPage({Key? key}) : super(key: key);
-  
+
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
@@ -28,17 +30,16 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-  
+
   @override
   void initState() {
     super.initState();
-    // Durata totale: 4500ms (circa 4.5 secondi)
+    
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 4500),
     );
-    
-    // Animazione di slide: dal basso (Offset(0, 1)) al centro (Offset(0, 0))
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 1),
       end: const Offset(0, 0),
@@ -48,11 +49,7 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         curve: const Interval(0.0, 0.333, curve: Curves.easeOut),
       ),
     );
-    
-    // Animazione di fade: 
-    // - dal 0% al 33% della durata: da trasparente a opaco,
-    // - dal 33% al 77%: opaco (stabile),
-    // - dal 77% al 100%: sfuma fino a scomparire.
+
     _fadeAnimation = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween(begin: 0.0, end: 1.0).chain(CurveTween(curve: Curves.easeIn)),
@@ -67,22 +64,44 @@ class _SplashPageState extends State<SplashPage> with SingleTickerProviderStateM
         weight: 22.3,
       ),
     ]).animate(_controller);
-    
-    // Avvio animazione e al termine passa alla LoginPage
-    _controller.forward().whenComplete(() {
+
+    _controller.forward().whenComplete(() async {
+      await _checkLoginStatus();
+    });
+  }
+
+  /// Controlla se l'utente ha già effettuato l'accesso
+  Future<void> _checkLoginStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedUsername = prefs.getString('username');
+    final String? savedPassword = prefs.getString('password');
+
+    if (savedUsername != null && savedPassword != null) {
+      // Se l'utente ha già fatto il login, va direttamente alla HomePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(
+            username: savedUsername,
+            password: savedPassword,
+          ),
+        ),
+      );
+    } else {
+      // Se non c'è login salvato, mostra la LoginPage
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginPage()),
       );
-    });
+    }
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -4,21 +4,23 @@ import 'package:flutter/material.dart';
 
 class ComponentC extends StatefulWidget {
   final void Function(Anagrafica?) onAnagraficaSelected;
+  final void Function(String)? onZoneSelected; // NUOVO callback per notificare la zona selezionata
   final String username;
   final String password;
 
   const ComponentC({
     Key? key,
     required this.onAnagraficaSelected,
+    this.onZoneSelected, // opzionale
     required this.username,
     required this.password,
   }) : super(key: key);
 
   @override
-  _ComponentCState createState() => _ComponentCState();
+  ComponentCState createState() => ComponentCState();
 }
 
-class _ComponentCState extends State<ComponentC> {
+class ComponentCState extends State<ComponentC> {
   final AnagraficaApi _api = AnagraficaApi();
   List<Anagrafica> _anagrafiche = [];
   Anagrafica? _selectedAnagrafica;
@@ -26,7 +28,7 @@ class _ComponentCState extends State<ComponentC> {
   String? _selectedZone;
   bool _isLoading = true;
 
-  // Questa variabile servirà a disabilitare i controlli della telecamera quando è aperto un Dialog
+  // Variabile per disabilitare i controlli della telecamera quando è aperto un dialog
   bool _isDialogOpen = false;
 
   // Lista appiattita delle parti del corpo
@@ -80,8 +82,7 @@ class _ComponentCState extends State<ComponentC> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Errore durante il caricamento delle anagrafiche: $e'),
+          content: Text('Errore durante il caricamento delle anagrafiche: $e'),
         ),
       );
     }
@@ -102,16 +103,14 @@ class _ComponentCState extends State<ComponentC> {
   }
 
   /// Mostra un dialogo di selezione con campo di ricerca.
-  /// [title] è il titolo del dialogo,
-  /// [items] è la lista di elementi selezionabili.
-  /// [selectedItem] è l'eventuale valore già selezionato (per evidenziarlo in cima).
-  /// Ritorna la stringa selezionata, oppure null se non si seleziona nulla.
+  /// [title] è il titolo del dialogo, [items] la lista degli elementi e [selectedItem] l'eventuale elemento già selezionato.
+  /// Ritorna la stringa selezionata oppure null.
   Future<String?> _showSelectionDialog({
     required String title,
     required List<String> items,
     String? selectedItem,
   }) async {
-    // Manteniamo una lista locale per il filtraggio.
+    // Lista locale per il filtraggio
     List<String> filteredItems = List.from(items);
 
     return showDialog<String>(
@@ -121,15 +120,13 @@ class _ComponentCState extends State<ComponentC> {
         String query = '';
         return StatefulBuilder(
           builder: (context, setStateDialog) {
-            // Applichiamo il filtro
+            // Filtriamo la lista in base al campo di ricerca
             List<String> tempFiltered = items
                 .where((item) =>
                     item.toLowerCase().contains(query.toLowerCase()))
                 .toList();
 
-            // Se c'è un elemento selezionato e appare nei risultati del filtro,
-            // lo togliamo dalla posizione originale e lo mettiamo in testa,
-            // per evidenziarlo poi con un bordo più spesso.
+            // Se l'elemento selezionato è presente, lo mettiamo in testa
             if (selectedItem != null &&
                 selectedItem != 'Seleziona' &&
                 tempFiltered.contains(selectedItem)) {
@@ -140,10 +137,24 @@ class _ComponentCState extends State<ComponentC> {
             filteredItems = tempFiltered;
 
             return AlertDialog(
-              title: Text(title),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(title),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+              ),
               content: SizedBox(
                 width: 300,
-                height: 400, // Altezza fissa per il dialog, con scroll interno.
+                height: 400, // Altezza fissa per il dialog con scroll interno
                 child: Column(
                   children: [
                     // Campo di ricerca
@@ -173,14 +184,15 @@ class _ComponentCState extends State<ComponentC> {
                                 Navigator.of(context).pop(item);
                               },
                               child: Container(
-                                decoration: BoxDecoration(
-                                  border: isSelectedItem
-                                      ? Border.all(
+                                decoration: isSelectedItem
+                                    ? BoxDecoration(
+                                        border: Border.all(
                                           color: Colors.black,
                                           width: 2.0,
-                                        )
-                                      : null,
-                                ),
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      )
+                                    : null,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 8.0,
                                   horizontal: 4.0,
@@ -202,9 +214,19 @@ class _ComponentCState extends State<ComponentC> {
     );
   }
 
+  // Metodo per aggiornare la zona selezionata e notificare il parent (se callback presente)
+  void updateZone(String zone) {
+    setState(() {
+      _selectedZone = zone;
+    });
+    if (widget.onZoneSelected != null) {
+      widget.onZoneSelected!(zone);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Per l'anagrafica, prepariamo la lista di stringhe (nome cognome).
+    // Prepara la lista di stringhe (nome + cognome) per l'anagrafica
     final List<String> anagraficheItems =
         _anagrafiche.map((ana) => "${ana.nome} ${ana.cognome}").toList();
 
@@ -212,7 +234,7 @@ class _ComponentCState extends State<ComponentC> {
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          // Se in caricamento, mostra il progress indicator, altrimenti mostra i pulsanti
+          // Mostra il progress indicator se in caricamento, altrimenti mostra i pulsanti di selezione
           if (_isLoading)
             const Center(child: CircularProgressIndicator())
           else
@@ -273,7 +295,7 @@ class _ComponentCState extends State<ComponentC> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Bottone per selezionare la parte del corpo
+                // Bottone per selezionare la zona del corpo
                 Expanded(
                   child: InkWell(
                     onTap: () async {
@@ -293,6 +315,10 @@ class _ComponentCState extends State<ComponentC> {
                         setState(() {
                           _selectedZone = selectedValue;
                         });
+                        // Notifica il parent della zona selezionata se il callback è definito
+                        if (widget.onZoneSelected != null) {
+                          widget.onZoneSelected!(selectedValue);
+                        }
                       }
                     },
                     child: Container(
@@ -320,10 +346,11 @@ class _ComponentCState extends State<ComponentC> {
               ],
             ),
           const SizedBox(height: 12),
+          // Visualizzazione dei dettagli dell'anagrafica e del modello 3D
           Expanded(
             child: Row(
               children: [
-                // Sezione per la visualizzazione dei dettagli dell'anagrafica
+                // Sezione dettagli anagrafici
                 Expanded(
                   flex: 3,
                   child: Padding(
@@ -347,10 +374,8 @@ class _ComponentCState extends State<ComponentC> {
                                 child: SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: _generateKeyValuePairs(
-                                            _selectedAnagrafica!)
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: _generateKeyValuePairs(_selectedAnagrafica!)
                                         .map(
                                           (pair) => Padding(
                                             padding: const EdgeInsets.symmetric(
@@ -384,19 +409,16 @@ class _ComponentCState extends State<ComponentC> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Visualizzazione del modello 3D
+                // Sezione visualizzazione 3D
                 Expanded(
                   flex: 3,
                   child: ThreeDModelViewer(
-                    // Per forzare la ricostruzione se cambia anagrafica o se il dialog è aperto/chiuso
-                    key: ValueKey(
-                        '${_selectedAnagrafica?.id}-${_isDialogOpen.toString()}'),
+                    key: ValueKey('${_selectedAnagrafica?.id}-${_isDialogOpen.toString()}'),
                     autoRotate: true,
                     modelUrl: _selectedAnagrafica != null &&
                             _selectedAnagrafica!.gender.toLowerCase() == "donna"
                         ? "https://www.goldbitweb.com/api1/models/femalebody_with_base_color.glb"
                         : "https://www.goldbitweb.com/api1/models/malebody_with_base_color.glb",
-                    // Se il dialog è aperto, disabilitiamo i controlli della telecamera
                     cameraControls: !_isDialogOpen,
                   ),
                 ),

@@ -1,6 +1,9 @@
+import 'package:app_analisi_cute/pages/login/login.dart';
+import 'package:app_analisi_cute/pages/manual_page/manual.dart';
 import 'package:app_analisi_cute/pages/settings/settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:app_analisi_cute/pages/anagraphic_cards/anagraphic_cards.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../analysis_dashboard/analysis_dashboard.dart';
 
 class HomePage extends StatelessWidget {
@@ -10,9 +13,21 @@ class HomePage extends StatelessWidget {
   const HomePage({Key? key, required this.username, required this.password})
       : super(key: key);
 
+Future<void> _logout(BuildContext context) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('username');
+  await prefs.remove('password');
+
+  // Torna alla LoginPage
+  Navigator.pushReplacement(
+    context,
+    MaterialPageRoute(builder: (context) => const LoginPage()),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
-    final double cardSize = MediaQuery.of(context).size.width / 4;
+    final double cardSize = MediaQuery.of(context).size.width / 6;
 
     return Scaffold(
       appBar: AppBar(
@@ -20,6 +35,12 @@ class HomePage extends StatelessWidget {
         elevation: 4,
         shadowColor: Colors.grey.withOpacity(0.4),
         iconTheme: const IconThemeData(color: Colors.black),
+        actions:  [
+          IconButton(
+  icon: const Icon(Icons.logout, color: Colors.black),
+  onPressed: () => _logout(context),
+)]
+        ,
         title: Stack(
           children: [
             // Titolo posizionato a sinistra
@@ -79,6 +100,19 @@ class HomePage extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (context) =>
                             AnagrafichePage(username: username, password: password),
+                      ),
+                    );
+                  },
+                ),
+                                HomeCard(
+                  title: 'Manuale',
+                  icon: Icons.book,
+                  size: cardSize,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ManualePage()
                       ),
                     );
                   },
