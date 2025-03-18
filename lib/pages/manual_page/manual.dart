@@ -13,6 +13,7 @@ class _ManualePageState extends State<ManualePage> {
     return DefaultTabController(
       length: 2, // Due tab: Operatore e Sviluppatore
       child: Scaffold(
+        backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text(
             'Manuale',
