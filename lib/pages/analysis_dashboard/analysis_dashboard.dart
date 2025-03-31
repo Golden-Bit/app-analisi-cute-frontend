@@ -323,6 +323,43 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
       _selectedAnalysis = analysisType;
     });
   }
+void _generateAndDownloadExtendedReport() async {
+  if (_selectedPatientId == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Seleziona un paziente prima di generare il report.')),
+    );
+    return;
+  }
+
+  final selectedAnagrafica = _getAnagraficaById(_selectedPatientId!);
+  if (selectedAnagrafica == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Errore: impossibile trovare i dati del paziente.')),
+    );
+    return;
+  }
+
+  // Utilizza tutte le zone (o eventualmente solo quelle effettivamente analizzate)
+  final reportHtml = generateExtendedReportHtml(
+    anagrafica: selectedAnagrafica,
+    allResults: _resultsByZone,
+    allImages: _imagesByZone,
+  );
+
+  try {
+    final blob = html.Blob([reportHtml], 'text/html');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..target = 'blank'
+      ..download = 'report_esteso_${selectedAnagrafica.nome}_${selectedAnagrafica.cognome}.html'
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Errore durante la generazione del report: $e')),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -350,6 +387,7 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
         ),
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
+
           // Pulsante per avviare l'Analisi Automatica
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -367,6 +405,22 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
               ),
             ),
           ),
+          Padding(
+  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+  child: ElevatedButton(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: Colors.black,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+    onPressed: _generateAndDownloadExtendedReport,
+    child: const Text(
+      'Genera Report Esteso',
+      style: TextStyle(color: Colors.white),
+    ),
+  ),
+),
           // Pulsante per l'Analisi manuale
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -615,12 +669,16 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
     );
   }
 }
+
 String generateReportHtml({
   required Anagrafica anagrafica,
   required String zone,
   required Map<String, Map<String, dynamic>> analysisResults,
   required List<String> images,
 }) {
+  
+  print(images);
+
   return '''
 <!DOCTYPE html>
 <html>
@@ -656,7 +714,15 @@ String generateReportHtml({
       background-color: #f2f2f2;
       text-align: left;
     }
-    .image-container img {
+    .image-box {
+      width: 100%;
+      border: 1px solid #ddd;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .image-box img {
       max-width: 200px;
       margin: 5px;
     }
@@ -741,8 +807,8 @@ String generateReportHtml({
     <div class="section-title">Immagini</div>
     ${images.isNotEmpty 
       ? '''
-      <div class="image-container">
-        ${images.map((imgBase64) => '<img src="data:image/png;base64,$imgBase64" />').join()}
+      <div class="image-box">
+        ${images.map((imgBase64) => '<img src="$imgBase64" />').join()}
       </div>
       '''
       : '<p>Nessuna immagine catturata</p>'}
@@ -750,4 +816,190 @@ String generateReportHtml({
 </body>
 </html>
   ''';
+}
+
+String generateExtendedReportHtml({
+  required Anagrafica anagrafica,
+  required Map<String, Map<String, Map<String, dynamic>>> allResults,
+  required Map<String, List<String>> allImages,
+}) {
+  StringBuffer htmlBuffer = StringBuffer();
+
+  htmlBuffer.write('''
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Report Analisi Esteso</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .section {
+      margin-bottom: 40px;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 20px;
+    }
+    .section-title {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .table th, .table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    .table th {
+      background-color: #f2f2f2;
+      text-align: left;
+    }
+    .image-box {
+      width: 100%;
+      border: 1px solid #ddd;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .image-box img {
+      max-width: 200px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Report Analisi Esteso</h1>
+    <h3>Generato per: ${anagrafica.nome} ${anagrafica.cognome}</h3>
+  </div>
+  
+  <div class="section">
+    <div class="section-title">Informazioni Anagrafiche</div>
+    <table class="table">
+      <tr>
+        <th>Nome</th>
+        <td>${anagrafica.nome}</td>
+      </tr>
+      <tr>
+        <th>Cognome</th>
+        <td>${anagrafica.cognome}</td>
+      </tr>
+      <tr>
+        <th>Data di Nascita</th>
+        <td>${anagrafica.birthDate}</td>
+      </tr>
+      <tr>
+        <th>Indirizzo</th>
+        <td>${anagrafica.address}</td>
+      </tr>
+      <tr>
+        <th>Peso</th>
+        <td>${anagrafica.peso} kg</td>
+      </tr>
+      <tr>
+        <th>Altezza</th>
+        <td>${anagrafica.altezza} cm</td>
+      </tr>
+      <tr>
+        <th>Genere</th>
+        <td>${anagrafica.gender}</td>
+      </tr>
+      <tr>
+        <th>Tipo di Pelle</th>
+        <td>${anagrafica.skinTypes.join(', ')}</td>
+      </tr>
+      <tr>
+        <th>Inestetismi</th>
+        <td>${anagrafica.issues.join(', ')}</td>
+      </tr>
+    </table>
+  </div>
+''');
+
+  // Cicla su ogni zona analizzata
+  allResults.forEach((zone, analysisResults) {
+    // Filtra i risultati validi (non di default)
+    final validRows = analysisResults.entries.where((entry) {
+      final result = entry.value;
+      bool isDefault = result['valore'] == 0 &&
+                       result['descrizione'] == "Nessun dato disponibile." &&
+                       result['valutazione_professionale'] == "Nessuna valutazione disponibile." &&
+                       result['consigli'] == "Nessun consiglio disponibile.";
+      return !isDefault;
+    }).toList();
+
+    // Recupera le immagini per la zona (eventualmente vuote)
+    final images = allImages[zone] ?? [];
+
+    // Se non ci sono risultati validi e non sono presenti immagini, salta la zona
+    if (validRows.isEmpty && images.isEmpty) {
+      return;
+    }
+
+    htmlBuffer.write('''
+  <div class="section">
+    <div class="section-title">Zona: $zone</div>
+    <div>
+''');
+
+    // Se ci sono risultati validi, scrivi la tabella
+    if (validRows.isNotEmpty) {
+      htmlBuffer.write('''
+      <table class="table">
+        <tr>
+          <th>Tipo di Analisi</th>
+          <th>Valore</th>
+          <th>Descrizione</th>
+          <th>Valutazione Professionale</th>
+          <th>Consigli</th>
+        </tr>
+      ''');
+      validRows.forEach((entry) {
+        final type = entry.key;
+        final result = entry.value;
+        htmlBuffer.write('''
+        <tr>
+          <td>$type</td>
+          <td>${result['valore']}</td>
+          <td>${result['descrizione']}</td>
+          <td>${result['valutazione_professionale']}</td>
+          <td>${result['consigli']}</td>
+        </tr>
+        ''');
+      });
+      htmlBuffer.write('''
+      </table>
+      ''');
+    }
+    
+    // Se sono presenti immagini, mostra il riquadro immagini
+    if (images.isNotEmpty) {
+      htmlBuffer.write('''
+      <div class="image-box">
+        ${images.map((img) => '<img src="$img" />').join()}
+      </div>
+      ''');
+    }
+    
+    htmlBuffer.write('''
+    </div>
+  </div>
+    ''');
+  });
+
+  htmlBuffer.write('''
+</body>
+</html>
+  ''');
+
+  return htmlBuffer.toString();
 }
