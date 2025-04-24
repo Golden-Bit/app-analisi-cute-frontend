@@ -1,14 +1,32 @@
-import 'dart:html' as html;
+import 'dart:async';
 import 'dart:convert';
+import 'dart:html' as html;
 import 'dart:ui' as ui;
-import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+
+/// Camera + Gallery (Web) con supporto autoscatto regolabile.
+/// -----------------------------------------------------------
+/// * [_timerSeconds] è modificabile runtime tramite dialog ⚙️.
+/// * Se 0 ⇒ scatto immediato; se >0 ⇒ conto alla rovescia.
+/// * Durante il countdown il pulsante di scatto mostra il numero.
+/// -----------------------------------------------------------
 class CameraGalleryWebWidget extends StatefulWidget {
-  final List<String> initialImages; // Immagini in Base64 (associate alla zona corrente)
-  final double containerWidth; // Larghezza del contenitore
-  final double galleryHeight; // Altezza della galleria
-  final Function(List<String>) onImagesUpdated; // Callback per aggiornare le immagini
+  /// Immagini iniziali (in Base64) – una per zona.
+  final List<String> initialImages;
+
+  /// Larghezza del contenitore video/galleria.
+  final double containerWidth;
+
+  /// Altezza della galleria.
+  final double galleryHeight;
+
+  /// Callback per comunicare le immagini catturate al parent.
+  final Function(List<String>) onImagesUpdated;
+
+  /// Valore di autoscatto iniziale (secondi, 0 = disattivato). Default 5.
+  final int initialTimerSeconds;
 
   const CameraGalleryWebWidget({
     Key? key,
@@ -16,172 +34,218 @@ class CameraGalleryWebWidget extends StatefulWidget {
     this.containerWidth = double.infinity,
     this.galleryHeight = 100.0,
     required this.onImagesUpdated,
+    this.initialTimerSeconds = 5,
   }) : super(key: key);
 
   @override
-  _CameraGalleryWebWidgetState createState() => _CameraGalleryWebWidgetState();
+  State<CameraGalleryWebWidget> createState() => _CameraGalleryWebWidgetState();
 }
 
 class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
-  String _videoUrl = "http://127.0.0.1:8081/video";
-  List<String> _capturedImages = []; // Lista immagini in Base64
-  final ScrollController _scrollController = ScrollController();
-
+  //------------------------------------------------------------------
+  // STREAM & CANVAS
+  //------------------------------------------------------------------
+  String _videoUrl = 'http://127.0.0.1:8081/video';
   late html.ImageElement _mjpegImage;
   late html.CanvasElement _canvas;
   late html.CanvasRenderingContext2D _ctx;
+
+  //------------------------------------------------------------------
+  // GALLERIA
+  //------------------------------------------------------------------
+  List<String> _capturedImages = [];
+  final ScrollController _scrollController = ScrollController();
+
+  //------------------------------------------------------------------
+  // STATE GENERICO
+  //------------------------------------------------------------------
   bool _isLoading = true;
   bool _hasError = false;
 
+  //------------------------------------------------------------------
+  // AUTOSCATTO
+  //------------------------------------------------------------------
+  late int _timerSeconds; // <-- modificabile runtime
+  Timer? _countdownTimer;
+  int? _countdownRemaining; // null = nessun countdown attivo
+
+  //------------------------------------------------------------------
+  // LIFECYCLE
+  //------------------------------------------------------------------
   @override
   void initState() {
     super.initState();
-    _capturedImages = List.from(widget.initialImages);
+    _capturedImages = List<String>.from(widget.initialImages);
+    _timerSeconds = widget.initialTimerSeconds;
     _setupMjpegStream();
   }
 
   @override
   void didUpdateWidget(covariant CameraGalleryWebWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Se il widget viene ricostruito con immagini differenti (es. cambio zona), aggiorna la lista
     if (oldWidget.initialImages != widget.initialImages) {
-      setState(() {
-        _capturedImages = List.from(widget.initialImages);
-      });
+      setState(() => _capturedImages = List<String>.from(widget.initialImages));
     }
   }
 
-  /// Configura lo stream MJPEG
-  void _setupMjpegStream() {
-    print("🔍 Creazione dello stream con URL: $_videoUrl");
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
 
+  //------------------------------------------------------------------
+  // STREAM SETUP
+  //------------------------------------------------------------------
+  void _setupMjpegStream() {
     _mjpegImage = html.ImageElement()
       ..src = _videoUrl
-      ..style.width = "100%"
-      ..style.height = "auto"
-      ..crossOrigin = "anonymous";
+      ..style.width = '100%'
+      ..style.height = 'auto'
+      ..crossOrigin = 'anonymous';
 
-    _mjpegImage.onLoad.listen((event) {
-      print("✅ Stream caricato con successo!");
-      setState(() {
-        _isLoading = false;
-        _hasError = false;
-      });
-    });
+    _mjpegImage.onLoad.first.then((_) => setState(() {
+          _isLoading = false;
+          _hasError = false;
+        }));
 
-    _mjpegImage.onError.listen((event) {
-      print("❌ Errore nel caricamento dello stream MJPEG!");
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
-    });
+    _mjpegImage.onError.first.then((_) => setState(() {
+          _isLoading = false;
+          _hasError = true;
+        }));
 
     if (kIsWeb) {
-      ui.platformViewRegistry.registerViewFactory(
-        'mjpeg-stream-view',
-        (int viewId) => _mjpegImage,
-      );
+      // ignore: undefined_prefixed_name
+      ui.platformViewRegistry.registerViewFactory('mjpeg-stream-view', (_) => _mjpegImage);
     }
 
     _canvas = html.CanvasElement();
     _ctx = _canvas.context2D;
   }
 
-  /// Cambia l'URL dello stream MJPEG
-  void _openUrlInputDialog() {
-    final TextEditingController urlController =
-        TextEditingController(text: _videoUrl);
+  //------------------------------------------------------------------
+  // SETTINGS DIALOG
+  //------------------------------------------------------------------
+  void _openSettingsDialog() {
+    final urlCtl = TextEditingController(text: _videoUrl);
+    final timerCtl = TextEditingController(text: _timerSeconds.toString());
+
     showDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Imposta URL dello stream MJPEG'),
-          content: TextField(
-            controller: urlController,
-            decoration: const InputDecoration(
-              hintText: 'Inserisci l\'URL (es: http://IP:8081/video)',
+      builder: (_) => AlertDialog(
+        title: const Text('Impostazioni'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: urlCtl,
+              decoration: const InputDecoration(labelText: 'URL stream MJPEG'),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annulla'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  if (urlController.text.isNotEmpty) {
-                    _videoUrl = urlController.text;
-                    _setupMjpegStream();
-                  }
-                });
-                Navigator.pop(context);
-              },
-              child: const Text('Salva'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: timerCtl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Autoscatto (s)'),
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                if (urlCtl.text.isNotEmpty && urlCtl.text != _videoUrl) {
+                  _videoUrl = urlCtl.text;
+                  _setupMjpegStream();
+                }
+                final parsed = int.tryParse(timerCtl.text);
+                if (parsed != null && parsed >= 0) _timerSeconds = parsed;
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
     );
   }
 
-void _capturePhoto() async {
-  if (!(_mjpegImage.complete ?? false)) {
-    print("⚠️ L'immagine non è ancora completamente caricata.");
-    return;
+  //------------------------------------------------------------------
+  // CAPTURE LOGIC
+  //------------------------------------------------------------------
+  void _onCapturePressed() {
+    if (_countdownRemaining != null) return; // countdown già in corso
+    if (_timerSeconds == 0) {
+      _capturePhoto();
+    } else {
+      _startCountdown();
+    }
   }
 
-  try {
-    _canvas.width = _mjpegImage.width;
-    _canvas.height = _mjpegImage.height;
-    _ctx.drawImage(_mjpegImage, 0, 0);
+  void _startCountdown() {
+    setState(() => _countdownRemaining = _timerSeconds);
 
-    String base64Image = _canvas.toDataUrl("image/png");
-    setState(() {
-      _capturedImages.add(base64Image);
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      setState(() {
+        if (_countdownRemaining! > 1) {
+          _countdownRemaining = _countdownRemaining! - 1;
+        } else {
+          t.cancel();
+          _countdownRemaining = null;
+          _capturePhoto();
+        }
+      });
     });
-
-    widget.onImagesUpdated(_capturedImages);
-    print("📸 Foto catturata con successo!");
-  } catch (e) {
-    print("❌ Errore durante lo screenshot: $e");
   }
-}
 
-  /// Elimina immagine dalla galleria
+  void _capturePhoto() {
+    if (!(_mjpegImage.complete ?? false)) return;
+
+    try {
+      _canvas.width = _mjpegImage.width;
+      _canvas.height = _mjpegImage.height;
+      _ctx.drawImage(_mjpegImage, 0, 0);
+      final base64 = _canvas.toDataUrl('image/png');
+      setState(() => _capturedImages.add(base64));
+      widget.onImagesUpdated(_capturedImages);
+    } catch (e) {
+      debugPrint('Errore cattura foto: $e');
+    }
+  }
+
+  //------------------------------------------------------------------
+  // UI AUX
+  //------------------------------------------------------------------
   void _deleteImage(int index) {
-    setState(() {
-      _capturedImages.removeAt(index);
-    });
+    setState(() => _capturedImages.removeAt(index));
     widget.onImagesUpdated(_capturedImages);
   }
 
-  /// Scorri la galleria a sinistra
-  void _scrollLeft() {
-    _scrollController.animateTo(
-      _scrollController.offset - 120,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
+  void _scrollLeft() => _scrollController.animateTo(
+        _scrollController.offset - 120,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
 
-  /// Scorri la galleria a destra
-  void _scrollRight() {
-    _scrollController.animateTo(
-      _scrollController.offset + 120,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
+  void _scrollRight() => _scrollController.animateTo(
+        _scrollController.offset + 120,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
 
+  //------------------------------------------------------------------
+  // BUILD
+  //------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Contenitore video superiore
-        Container(
+        //------------------------------------------------------
+        // VIDEO STREAM
+        //------------------------------------------------------
+        SizedBox(
           width: widget.containerWidth,
           child: AspectRatio(
             aspectRatio: 16 / 9,
@@ -191,31 +255,24 @@ void _capturePhoto() async {
                 _isLoading
                     ? const CircularProgressIndicator()
                     : _hasError
-                        ? const Text("Errore nel caricamento dello stream MJPEG")
+                        ? const Text('Errore stream MJPEG')
                         : HtmlElementView(viewType: 'mjpeg-stream-view'),
-                // Pulsante per catturare l'immagine
+
+                // ➜ Pulsante scatto / countdown
                 Positioned(
                   bottom: 24,
                   child: GestureDetector(
-                    onTap: _capturePhoto,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.8),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: const Icon(Icons.camera_alt, color: Colors.black, size: 28),
-                    ),
+                    onTap: _onCapturePressed,
+                    child: _buildCaptureButton(),
                   ),
                 ),
-                // Icona per cambiare l'URL dello stream
+
+                // ➜ Icona impostazioni
                 Positioned(
                   top: 16,
                   right: 16,
                   child: GestureDetector(
-                    onTap: _openUrlInputDialog,
+                    onTap: _openSettingsDialog,
                     child: Container(
                       width: 40,
                       height: 40,
@@ -232,11 +289,13 @@ void _capturePhoto() async {
           ),
         ),
         const SizedBox(height: 12),
-        // Galleria immagini inferiore
+        //------------------------------------------------------
+        // GALLERIA
+        //------------------------------------------------------
         Container(
           width: widget.containerWidth,
           height: widget.galleryHeight,
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(2),
@@ -251,62 +310,76 @@ void _capturePhoto() async {
           ),
           child: _capturedImages.isEmpty
               ? const Center(
-                  child: Text(
-                    'Nessuna immagine catturata',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                  ),
+                  child: Text('Nessuna immagine catturata',
+                      style: TextStyle(fontSize: 16, color: Colors.grey)),
                 )
               : Row(
                   children: [
-                    IconButton(
-                      onPressed: _scrollLeft,
-                      icon: const Icon(Icons.arrow_back),
-                    ),
+                    IconButton(onPressed: _scrollLeft, icon: const Icon(Icons.arrow_back)),
                     Expanded(
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
                         controller: _scrollController,
                         itemCount: _capturedImages.length,
-                        itemBuilder: (context, index) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Stack(
-                              children: [
-                                Image.network(
-                                  _capturedImages[index],
-                                  width: 100,
-                                  height: double.infinity,
-                                  fit: BoxFit.cover,
-                                ),
-                                Positioned(
-                                  top: 0,
-                                  right: 0,
-                                  child: GestureDetector(
-                                    onTap: () => _deleteImage(index),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4.0),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.5),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.close, color: Colors.white, size: 16),
+                        itemBuilder: (_, i) => Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Stack(
+                            children: [
+                              Image.network(_capturedImages[i], width: 100, fit: BoxFit.cover),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () => _deleteImage(i),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.5),
+                                      shape: BoxShape.circle,
                                     ),
+                                    child: const Icon(Icons.close, size: 16, color: Colors.white),
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        },
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _scrollRight,
-                      icon: const Icon(Icons.arrow_forward),
-                    ),
+                    IconButton(onPressed: _scrollRight, icon: const Icon(Icons.arrow_forward)),
                   ],
                 ),
         ),
       ],
+    );
+  }
+
+  //------------------------------------------------------------------
+  // WIDGET PULSANTE / COUNTDOWN
+  //------------------------------------------------------------------
+  Widget _buildCaptureButton() {
+    if (_countdownRemaining != null) {
+      return Container(
+        width: 60,
+        height: 60,
+        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        alignment: Alignment.center,
+        child: Text(
+          _countdownRemaining.toString(),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.8),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+      ),
+      child: const Icon(Icons.camera_alt, color: Colors.black, size: 28),
     );
   }
 }

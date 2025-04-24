@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
-
+import 'dart:async' show unawaited; 
 import 'package:app_analisi_cute/backend_sdk/analyze.dart';
 import 'package:app_analisi_cute/backend_sdk/patients.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +10,9 @@ import 'components/component_c.dart';
 import 'components/component_d.dart';
 import 'components/component_b.dart';
 import 'dart:html' as html; // Questo import funziona solo su Web
+import 'dart:developer' as dev;   // per log più potenti di print
+import 'package:flutter/cupertino.dart' show CupertinoActivityIndicator; // solo per lo spinner piccolo
+
 
 class AnalysisDashboard extends StatefulWidget {
   final String username;
@@ -27,7 +30,10 @@ class AnalysisDashboard extends StatefulWidget {
 
 class _AnalysisDashboardState extends State<AnalysisDashboard> {
   final AnalysisApi _api = AnalysisApi(); // API instance
-
+// subito dopo _analysisScoresByZone
+final Set<String> _analysisInProgressPerZone = {}; // zone attualmente in analisi
+final Set<String> _failedAutomaticZones = {};     // zone fallite
+bool _showAutomaticSummary = false;               // mostra la card finale?
   // Le mappe per i risultati e i punteggi rimangono indicizzate per zona e per tipo di analisi
   Map<String, Map<String, Map<String, dynamic>>> _resultsByZone = {};
   Map<String, Map<String, int>> _analysisScoresByZone = {};
@@ -99,6 +105,55 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
       _selectedPatientId = selectedPatient?.id;
     });
   }
+Future<void> _performAnalysisForZone(String zone) async {
+  // debug
+  print('[AA] ➡️ Richiesta analisi per "$zone"');
+
+  // Non avviare se già in coda o senza foto
+  final images = _imagesByZone[zone] ?? [];
+  if (_analysisInProgressPerZone.contains(zone)) { //|| images.isEmpty) {
+    print('[AA] ⏩ Skip "$zone": già in corso o senza immagini');
+    return;
+  }
+
+  _analysisInProgressPerZone.add(zone);
+  print('[AA] 🏃‍♂️ Parte analisi "$zone" con ${images.length} immagini');
+
+  try {
+    final response = await _api.analyzeSkin(
+      username: widget.username,
+      password: widget.password,
+      patientId: _selectedPatientId!,
+      images: images,
+    );
+
+    print('[AA] ✅ Risposta "$zone": ${response.keys.toList()}');
+
+    if (!mounted) return; // widget distrutto
+
+    setState(() {
+      response.forEach((analysisType, value) {
+        if (value is Map<String, dynamic>) {
+          _resultsByZone[zone]![analysisType] = value;
+          _analysisScoresByZone[zone]![analysisType] =
+              value['valore'] ?? 0;
+        }
+      });
+    });
+  } catch (e, st) {
+      _failedAutomaticZones.add(zone);   
+    print('[AA] ❌ Errore "$zone": $e');
+  } finally {
+    _analysisInProgressPerZone.remove(zone);
+    print('[AA] 🔚 Fine analisi "$zone"');
+      if (!_isAutomaticAnalysisActive &&
+      _analysisInProgressPerZone.isEmpty &&
+      mounted) {
+    setState(() {});      // forza rebuild del riepilogo quando l’ultima Future termina
+  }
+  }
+}
+
 
   Future<void> _fetchAnagrafiche() async {
     try {
@@ -227,6 +282,7 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
 
   // Avvio della modalità di analisi automatica
   void _startAutomaticAnalysis() {
+    
     if (_selectedPatientId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Seleziona un paziente prima di avviare l\'analisi automatica.')),
@@ -270,23 +326,38 @@ class _AnalysisDashboardState extends State<AnalysisDashboard> {
     });
     if (_componentCKey.currentState != null) {
       _componentCKey.currentState!.updateZone(_automaticZones[0]);
+        // ⬇️  **NUOVA RIGA**: avvia subito l’analisi della prima zona in background
+
+  unawaited(_performAnalysisForZone(_selectedZone));
     }
   }
 
   // Metodo richiamato al click su "Prossimo" nella modalità automatica
-  void _onAutomaticAnalysisNext() {
-    setState(() {
-      _currentAutomaticZoneIndex++;
-      if (_currentAutomaticZoneIndex < _automaticZones.length) {
-        _selectedZone = _automaticZones[_currentAutomaticZoneIndex];
-        if (_componentCKey.currentState != null) {
-          _componentCKey.currentState!.updateZone(_automaticZones[_currentAutomaticZoneIndex]);
-        }
-      } else {
-        _isAutomaticAnalysisActive = false;
-      }
-    });
-  }
+void _onAutomaticAnalysisNext() {
+  final zoneLeaving = _automaticZones[_currentAutomaticZoneIndex];
+
+  // 1️⃣ lancia la richiesta NON bloccante
+  unawaited(_performAnalysisForZone(zoneLeaving));
+
+  // 2️⃣ passa subito alla UI della prossima zona
+  setState(() {
+    _completedAutomaticZones.add(zoneLeaving);
+    _currentAutomaticZoneIndex++;
+
+    if (_currentAutomaticZoneIndex < _automaticZones.length) {
+      _selectedZone = _automaticZones[_currentAutomaticZoneIndex];
+      _componentCKey.currentState?.updateZone(_selectedZone);
+      dev.log('[AA] ➡️ Passo a "$_selectedZone" (idx $_currentAutomaticZoneIndex)',
+          name: 'AUTOMATIC_ANALYSIS');
+    } else {
+  _isAutomaticAnalysisActive = false;
+  _showAutomaticSummary   = true;                 // ⬅️ mostra card finale
+  dev.log('[AA] 🏁 Finiti gli step automatici → riepilogo', name: 'AUTOMATIC_ANALYSIS');
+}
+  });
+}
+
+
 
   @override
   void initState() {
@@ -359,6 +430,162 @@ void _generateAndDownloadExtendedReport() async {
       SnackBar(content: Text('Errore durante la generazione del report: $e')),
     );
   }
+}
+// Card che guida lo scatto foto per la zona corrente
+Widget _buildStepCard() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+    child: Card(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: const BorderSide(color: Colors.black, width: 1),
+      ),
+      elevation: 4,
+      child: Container(
+        height: 100,
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${_currentAutomaticZoneIndex + 1}/${_automaticZones.length}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'Effettua le fotografie della zona: '
+                  '${_automaticZones[_currentAutomaticZoneIndex]}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                _buildOutlinedButton('Annulla', () {
+                  setState(() {
+                    _isAutomaticAnalysisActive = false;
+                  });
+                }),
+                const SizedBox(width: 8),
+                _buildOutlinedButton('Prossimo', _onAutomaticAnalysisNext),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// Card di riepilogo analisi automatiche
+Widget _buildSummaryCard() {
+  final bool allDone   = _analysisInProgressPerZone.isEmpty;
+  final bool allOK     = _failedAutomaticZones.isEmpty;
+  final Color headerBg = allDone
+      ? (allOK ? Colors.green[100]! : Colors.red[100]!)
+      : Colors.transparent;
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+    child: Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(
+          color: allDone
+              ? (allOK ? Colors.green : Colors.red)
+              : Colors.grey,
+          width: 2,
+        ),
+      ),
+      elevation: 4,
+      child: Container(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            // Header stato
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(4.0),
+              color: headerBg,
+              child: Text(
+                allDone
+                    ? (allOK
+                        ? '✅ Tutte le analisi completate con successo'
+                        : '⚠️ Analisi completate – alcune con errore')
+                    : '⏳ Analisi in corso…',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Lista stato per zona
+            SizedBox(
+              height: 75,
+              child: ListView.builder(
+                itemCount: _automaticZones.length,
+                itemBuilder: (context, i) {
+                  final z = _automaticZones[i];
+                  Widget icon;
+                  if (_analysisInProgressPerZone.contains(z)) {
+                    icon = const CupertinoActivityIndicator();
+                  } else if (_failedAutomaticZones.contains(z)) {
+                    icon = const Icon(Icons.error, color: Colors.red);
+                  } else if (_completedAutomaticZones.contains(z)) {
+                    icon = const Icon(Icons.check, color: Colors.green);
+                  } else {
+                    icon = const Icon(Icons.circle_outlined,
+                        color: Colors.grey);
+                  }
+                  return ListTile(
+                    dense: true,
+                    leading: icon,
+                    title: Text(z, style: const TextStyle(fontSize: 14)),
+                  );
+                },
+              ),
+            ),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (allDone)                           // mostra scarica solo a fine lavori
+                  _buildOutlinedButton('Scarica Report', () {
+                    _generateAndDownloadExtendedReport();
+                    setState(() => _showAutomaticSummary = false);
+                  }),
+                const SizedBox(width: 8),
+                _buildOutlinedButton('Chiudi', () {
+                  setState(() => _showAutomaticSummary = false);
+                }),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+// comodità: bottone bianco con bordo nero
+Widget _buildOutlinedButton(String label, VoidCallback onPressed) {
+  return ElevatedButton(
+    style: ButtonStyle(
+      backgroundColor: MaterialStateProperty.all<Color>(Colors.white),
+      foregroundColor: MaterialStateProperty.all<Color>(Colors.black),
+      side: MaterialStateProperty.all(
+          const BorderSide(color: Colors.black)),
+      shape: MaterialStateProperty.all(RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+      )),
+    ),
+    onPressed: onPressed,
+    child: Text(label),
+  );
 }
 
   @override
@@ -518,97 +745,15 @@ void _generateAndDownloadExtendedReport() async {
                           child: Column(
                             children: [
                               // Blocca relativo alla modalità automatica
-                              if (_isAutomaticAnalysisActive && _currentAutomaticZoneIndex < _automaticZones.length)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-                                  child: Card(
-                                    color: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                      side: const BorderSide(color: Colors.black, width: 1),
-                                    ),
-                                    elevation: 4,
-                                    child: Container(
-                                      height: 100,
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "${_currentAutomaticZoneIndex + 1}/${_automaticZones.length}",
-                                            style: const TextStyle(fontWeight: FontWeight.bold),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Expanded(
-                                            child: Center(
-                                              child: Text(
-                                                "Effettua le fotografie della zona: ${_automaticZones[_currentAutomaticZoneIndex]}",
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(fontSize: 16),
-                                              ),
-                                            ),
-                                          ),
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.end,
-                                            children: [
-                                              // Pulsante "Annulla"
-                                              ElevatedButton(
-                                                style: ButtonStyle(
-                                                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                                                    (states) => states.contains(MaterialState.hovered)
-                                                        ? Colors.black
-                                                        : Colors.white,
-                                                  ),
-                                                  foregroundColor: MaterialStateProperty.resolveWith<Color>(
-                                                    (states) => states.contains(MaterialState.hovered)
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                  ),
-                                                  side: MaterialStateProperty.all(const BorderSide(color: Colors.black)),
-                                                  shape: MaterialStateProperty.all(
-                                                    RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                  ),
-                                                ),
-                                                onPressed: () {
-                                                  setState(() {
-                                                    _isAutomaticAnalysisActive = false;
-                                                  });
-                                                },
-                                                child: const Text("Annulla"),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              // Pulsante "Prossimo"
-                                              ElevatedButton(
-                                                style: ButtonStyle(
-                                                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                                                    (states) => states.contains(MaterialState.hovered)
-                                                        ? Colors.black
-                                                        : Colors.white,
-                                                  ),
-                                                  foregroundColor: MaterialStateProperty.resolveWith<Color>(
-                                                    (states) => states.contains(MaterialState.hovered)
-                                                        ? Colors.white
-                                                        : Colors.black,
-                                                  ),
-                                                  side: MaterialStateProperty.all(const BorderSide(color: Colors.black)),
-                                                  shape: MaterialStateProperty.all(
-                                                    RoundedRectangleBorder(
-                                                      borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                  ),
-                                                ),
-                                                onPressed: _onAutomaticAnalysisNext,
-                                                child: const Text("Prossimo"),
-                                              ),
-                                            ],
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
+  // ───────── BLOCCO UI AUTOMATIC ANALYSIS / SUMMARY ─────────
+  if (_isAutomaticAnalysisActive &&
+      _currentAutomaticZoneIndex < _automaticZones.length)
+    _buildStepCard(),          // <-- niente spread, singolo widget
+
+  if (_showAutomaticSummary)
+    _buildSummaryCard(),       // <-- idem
+  // ───────── FINE BLOCCO UI ─────────────────────────────────
+
                               // Widget della Camera Gallery
                               Expanded(
                                 child: CameraGalleryWebWidget(
