@@ -111,7 +111,7 @@ Future<void> _performAnalysisForZone(String zone) async {
 
   // Non avviare se già in coda o senza foto
   final images = _imagesByZone[zone] ?? [];
-  if (_analysisInProgressPerZone.contains(zone)) { //|| images.isEmpty) {
+  if (_analysisInProgressPerZone.contains(zone) || images.isEmpty) {
     print('[AA] ⏩ Skip "$zone": già in corso o senza immagini');
     return;
   }
