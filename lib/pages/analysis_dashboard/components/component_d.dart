@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class ComponentD extends StatelessWidget {
   final String modelSrc; // Path to the 3D model
-  final Map<String, int> analysisData; // Analysis data for all types
+  final Map<String, double> analysisData; // Analysis data for all types
 
   const ComponentD({Key? key, required this.modelSrc, required this.analysisData})
       : super(key: key);
@@ -45,7 +45,7 @@ class ComponentD extends StatelessWidget {
   }
 
   // Generate rows for the analysis data table
-  List<TableRow> _generateTableRows(Map<String, int> data) {
+  List<TableRow> _generateTableRows(Map<String, double> data) {
     List<TableRow> rows = [];
     final keys = data.keys.toList();
     for (int i = 0; i < keys.length; i += 3) {
@@ -82,7 +82,7 @@ return Padding(
         Align(
           alignment: Alignment.bottomCenter,
           child: Text(
-            (value/100).toString(),
+            value.toStringAsFixed(2),
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12),
           ),
@@ -104,21 +104,26 @@ return Padding(
     return rows;
   }
 
-Color _getColorForValue(String key, int value) {
-  if (key.toLowerCase() == "densità pilifera") {
+Color _getColorForValue(String key, double value) {
+  final lower = key.toLowerCase();
+  final lowIsGood = lower == 'densità pilifera' ||
+                    lower == 'macchie cutanee' ||
+                    lower == 'pori ostruiti';
+
+  if (lowIsGood) {
     // Inversione: valori bassi -> verde, alti -> rosso
-    if (value <= 40) {
+    if (value <= 0.4) {
       return Colors.green;
-    } else if (value > 40 && value < 70) {
+    } else if (value > 0.4 && value < 0.7) {
       return Colors.orange;
     } else {
       return Colors.red;
     }
   } else {
     // Logica standard per le altre analisi
-    if (value <= 40) {
+    if (value <= 0.4) {
       return Colors.red;
-    } else if (value > 40 && value < 70) {
+    } else if (value > 0.4 && value < 0.7) {
       return Colors.orange;
     } else {
       return Colors.green;

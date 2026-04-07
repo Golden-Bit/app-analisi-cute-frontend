@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ComponentB extends StatelessWidget {
-  final int score;
+  final double score;
   final String description;
   final String professionalEvaluation;
   final String advice;
@@ -32,7 +32,7 @@ class ComponentB extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    (score/100).toString(),
+                    score.toStringAsFixed(2),
                     style: TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -48,9 +48,9 @@ class ComponentB extends StatelessWidget {
                   ),
                   Slider(
                     value: score.toDouble(),
-                    min: 0,
-                    max: 100,
-                    divisions: 10,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 100,
                     onChanged: null,
                     activeColor: _getColorForScore(score), // Dynamic slider color
                     inactiveColor: Colors.grey,
@@ -83,10 +83,10 @@ class ComponentB extends StatelessWidget {
   }
 
   /// Determine the color based on the score value
-  Color _getColorForScore(int score) {
-    if (score <= 40) {
+  Color _getColorForScore(double score) {
+    if (score <= 0.4) {
       return Colors.red;
-    } else if (score > 40 && score < 70) {
+    } else if (score > 0.4 && score < 0.7) {
       return Colors.orange;
     } else {
       return Colors.green;

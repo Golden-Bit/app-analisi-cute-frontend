@@ -135,6 +135,7 @@ Future<void> _initializeCameraSystem() async {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text("Seleziona una telecamera"),
           content: Column(
             mainAxisSize: MainAxisSize.min,

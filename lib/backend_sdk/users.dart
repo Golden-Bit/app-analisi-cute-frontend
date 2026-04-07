@@ -6,10 +6,11 @@ class Api4Sdk {
   final http.Client client;
 
   // Puoi passare l'URL base in fase di inizializzazione oppure utilizzare quello di default.
-  Api4Sdk({this.baseUrl = 'https://www.goldbitweb.com/api4', http.Client? client})
+  Api4Sdk(
+      {this.baseUrl = 'https://www.goldbitweb.com/api4', http.Client? client})
       : client = client ?? http.Client();
   //Api4Sdk({this.baseUrl = 'http://127.0.0.1:8003', http.Client? client})
-   //   : client = client ?? http.Client();
+  //   : client = client ?? http.Client();
 
   // -----------------------------
   // Endpoint: Registrazione utente
@@ -43,6 +44,7 @@ class Api4Sdk {
     required String password,
   }) async {
     final url = Uri.parse('$baseUrl/login');
+    print("#" * 100);
     final response = await client.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -76,29 +78,33 @@ class Api4Sdk {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Errore durante l\'aggiornamento utente: ${response.body}');
+      throw Exception(
+          'Errore durante l\'aggiornamento utente: ${response.body}');
     }
   }
+
 // -----------------------------
 // Endpoint: Visualizzazione dei dati personali dell'utente
 // -----------------------------
-Future<Map<String, dynamic>> getOwnData({
-  required String username,
-  required String password,
-}) async {
-  final url = Uri.parse('$baseUrl/me?username=$username&password=$password');
-  final response = await client.get(
-    url,
-    headers: {'Content-Type': 'application/json'},
-  );
+  Future<Map<String, dynamic>> getOwnData({
+    required String username,
+    required String password,
+  }) async {
+    final url = Uri.parse('$baseUrl/me?username=$username&password=$password');
+    final response = await client.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
 
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body);
-    return data['data'];
-  } else {
-    throw Exception('Errore durante il recupero dei dati personali: ${response.body}');
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data['data'];
+    } else {
+      throw Exception(
+          'Errore durante il recupero dei dati personali: ${response.body}');
+    }
   }
-}
+
   // -----------------------------
   // Endpoint Admin: Cambio password arbitrario di un utente
   // -----------------------------
@@ -120,7 +126,8 @@ Future<Map<String, dynamic>> getOwnData({
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Errore durante il cambio password admin: ${response.body}');
+      throw Exception(
+          'Errore durante il cambio password admin: ${response.body}');
     }
   }
 
@@ -131,11 +138,13 @@ Future<Map<String, dynamic>> getOwnData({
     required String adminUsername,
     required String adminPassword,
   }) async {
-    final url = Uri.parse('$baseUrl/admin/accounts?admin_username=$adminUsername&admin_password=$adminPassword');
+    final url = Uri.parse(
+        '$baseUrl/admin/accounts?admin_username=$adminUsername&admin_password=$adminPassword');
     final response = await client.get(url);
 
     if (response.statusCode != 200) {
-      throw Exception('Errore durante il recupero degli account: ${response.body}');
+      throw Exception(
+          'Errore durante il recupero degli account: ${response.body}');
     }
     final data = json.decode(response.body);
     return data['accounts'];
@@ -149,11 +158,45 @@ Future<Map<String, dynamic>> getOwnData({
     required String adminUsername,
     required String adminPassword,
   }) async {
-    final url = Uri.parse('$baseUrl/admin/delete/$targetUsername?admin_username=$adminUsername&admin_password=$adminPassword');
+    final url = Uri.parse(
+        '$baseUrl/admin/delete/$targetUsername?admin_username=$adminUsername&admin_password=$adminPassword');
     final response = await client.delete(url);
 
     if (response.statusCode != 200) {
-      throw Exception('Errore durante l\'eliminazione dell\'utente: ${response.body}');
+      throw Exception(
+          'Errore durante l\'eliminazione dell\'utente: ${response.body}');
     }
+  }
+
+  // -----------------------------
+  // Endpoint Admin: Storico accessi di un utente (paginato)
+  // -----------------------------
+  Future<Map<String, dynamic>> getAdminLoginHistory({
+    required String targetUsername,
+    required String adminUsername,
+    required String adminPassword,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final url =
+        Uri.parse('$baseUrl/admin/login_history/$targetUsername').replace(
+      queryParameters: {
+        'admin_username': adminUsername,
+        'admin_password': adminPassword,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      },
+    );
+
+    final response = await client.get(url);
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Errore durante il recupero dello storico accessi: ${response.body}');
+    }
+
+    final decodedBody = utf8.decode(response.bodyBytes);
+    final Map<String, dynamic> payload =
+        json.decode(decodedBody) as Map<String, dynamic>;
+    return Map<String, dynamic>.from(payload['data'] ?? {});
   }
 }

@@ -3,6 +3,13 @@
          the Flutter tool needs it to communicate with the running application
          to allow setting breakpoints, to provide hot reload, etc.
     -->
+    <application
+        android:networkSecurityConfig="@xml/debug_network_security_config"
+        android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true">
+        <!-- eventuali altri override -->
+    </application>
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <!-- Permessi di debug -->
@@ -18,4 +25,5 @@
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.USB_PERMISSION"/>
     <uses-permission android:name="android.hardware.usb.accessory"/>
+
 </manifest>

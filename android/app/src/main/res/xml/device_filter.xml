@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Rileva qualsiasi dispositivo USB -->
-    <usb-device />
+    <!-- Class = 239 (0xEF), Subclass = 2 (Video), Protocol = 1 (UVC) -->
+    <usb-device class="239" subclass="2" protocol="1"/>
 </resources>

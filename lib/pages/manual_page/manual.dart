@@ -25,15 +25,9 @@ class _ManualePageState extends State<ManualePage> {
       _VideoItem(
         title: 'Intro e login',
         url:
-            'https://video.wixstatic.com/video/63b1fb_0265e3ac82174341aeb85674fe7ac09b/1080p/mp4/file.mp4',
+            'https://video.wixstatic.com/video/63b1fb_c1f56c12ec8244abbe6c4c519c8045a7/720p/mp4/file.mp4',
         description:
             'Come effettuare il login e panoramica iniziale dell’interfaccia.',
-      ),
-      _VideoItem(
-        title: 'Connessione manipolo',
-        url:
-            'https://video.wixstatic.com/video/63b1fb_3ccf007e48ef458992cc716fda967a29/1080p/mp4/file.mp4',
-        description: 'Collegare correttamente il manipolo al dispositivo.',
       ),
       _VideoItem(
         title: 'Anagrafiche',
@@ -44,9 +38,16 @@ class _ManualePageState extends State<ManualePage> {
       _VideoItem(
         title: 'Analisi singola',
         url:
-            'https://video.wixstatic.com/video/63b1fb_5ebbb919e7114c6cb405270bdb67fd4b/1080p/mp4/file.mp4',
+            'https://video.wixstatic.com/video/63b1fb_f1f3fa02fff849eaa4e2f1a8666f3a35/480p/mp4/file.mp4',
         description:
             'Esecuzione di un’analisi singola con interpretazione dei risultati.',
+      ),
+      _VideoItem(
+        title: 'Analisi multipla',
+        url:
+            'https://video.wixstatic.com/video/63b1fb_02dab27810ed4d5f8670e446c3a9f47c/480p/mp4/file.mp4',
+        description:
+            'Esecuzione di un’analisi multipla con interpretazione dei risultati.',
       ),
     ];
 

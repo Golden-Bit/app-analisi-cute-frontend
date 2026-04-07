@@ -27,6 +27,7 @@ class _HoverableCardState extends State<HoverableCard> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: Card(
+                              color: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(2), // Imposta il border radius a 2

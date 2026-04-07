@@ -15,13 +15,30 @@
     <!-- 🔹 AGGIUNTO: Supporto per OpenGL ES 3.0 (necessario per rendering 3D) -->
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
 
+    <!-- 1️⃣ Feature USB host (indispensabile per enumerare webcam) -->
+    <uses-feature android:name="android.hardware.usb.host"/>
+
+    <!-- 2️⃣ Feature external-camera dichiarata NON obbligatoria
+         così Google Play non filtra i device che ne sono privi -->
+    <uses-feature
+        android:name="android.hardware.camera.external"
+        android:required="false"/>
+
+    <!-- 3️⃣ Permesso CAMERA: obbligatorio per aprire device video USB
+         dal momento che i video-class (0x0E) richiedono anche CAMERA :contentReference[oaicite:0]{index=0} -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+
+    <!-- facoltativo: foreground-service se farai registrazione in background
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA"/>
+    -->
+    
     <application
         android:usesCleartextTraffic="true"
-        android:networkSecurityConfig="@xml/network_security_config"
+        android:enableOnBackInvokedCallback="true"
         android:label="app_analisi_cute"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
-        
+        android:icon="@mipmap/ic_launcher"
+        android:hardwareAccelerated="true"> 
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,6 +74,32 @@
             android:name="android.webkit.WebView.EnableSafeBrowsing"
             android:value="false"/>
 
+
+        <!-- 4️⃣ BroadcastReceiver per hot-plug USB (UVC)
+             ACTION_USB_DEVICE_ATTACHED/DETACHED restano consentiti su API 34 :contentReference[oaicite:1]{index=1} -->
+        <receiver android:name=".UsbAttachReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_DETACHED"/>
+            </intent-filter>
+
+            <!-- Filtra solo i device video class (0xEF subclass 2 protocol 1) -->
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter"/>
+        </receiver>
+
+        <!-- 5️⃣ Metadato richiesto da Flutter -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"/>
+
+        <!-- (opzionale) indicazione dei tipi di foreground-service usati
+        <service
+            android:name=".UsbCameraService"
+            android:foregroundServiceType="camera|connectedDevice"
+            android:exported="false"/>
+        -->
     </application>
 
     <!-- 🔹 AGGIUNTO: Query per processare testo (necessario per Flutter) -->

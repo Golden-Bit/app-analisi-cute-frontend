@@ -133,6 +133,7 @@ class _CameraGalleryWebWidgetState extends State<CameraGalleryWebWidget> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: Colors.white,
         title: const Text('Impostazioni'),
         content: Column(
           mainAxisSize: MainAxisSize.min,

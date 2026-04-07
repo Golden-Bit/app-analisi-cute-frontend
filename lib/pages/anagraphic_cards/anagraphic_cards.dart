@@ -54,6 +54,7 @@ class _HoverableCardState extends State<HoverableCard> {
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: Card(
+        color: Colors.white,
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(2),
@@ -192,6 +193,107 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
     _searchController.dispose();
     super.dispose();
   }
+/// Apre un dialog con i controlli di filtro
+Future<void> _openFilterDialog() async {
+  // Stato locale dei filtri
+  String nameContains = _searchController.text;
+  bool onlyWithId = false;
+
+  // Controller persistente per evitare perdite di focus e selection inversa
+  final TextEditingController nameController =
+      TextEditingController(text: nameContains)
+        ..selection = TextSelection.fromPosition(
+          TextPosition(offset: nameContains.length),
+        );
+
+  await showDialog(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text('Filtri Anagrafiche'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Filtro per nome
+                TextField(
+                  controller: nameController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome contiene...',
+                  ),
+                  onChanged: (v) {
+                    setDialogState(() => nameContains = v);
+                    // Ricarica la selection per sicurezza
+                    nameController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: nameController.text.length),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                // Filtro checkbox
+                CheckboxListTile(
+                  title: const Text('Mostra solo con ID non nullo'),
+                  value: onlyWithId,
+                  onChanged: (v) =>
+                      setDialogState(() => onlyWithId = v!),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Annulla'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  // Applica filtro definitivo
+                  setState(() {
+                    // (Opzionale) sincronizza anche la search bar principale
+                    _searchController.text = nameContains;
+                    _filteredAnagrafiche = _allAnagrafiche.where((a) {
+                      final fullName =
+                          '${a.nome} ${a.cognome}'.toLowerCase();
+                      final matchesName =
+                          fullName.contains(nameContains.toLowerCase());
+                      final matchesId =
+                          onlyWithId ? (a.id?.isNotEmpty ?? false) : true;
+                      return matchesName && matchesId;
+                    }).toList();
+                  });
+                  Navigator.pop(context);
+                },
+                child: const Text('Applica'),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+String _buildSubtitle(Anagrafica ana) {
+  final hist = ana.analysisHistory;
+  if (hist.isEmpty) return 'Nessuna analisi registrata';
+
+  // numero totale
+  final total = hist.length;
+
+  // estrai la data più recente
+  hist.sort((a, b) =>
+      (b['timestamp'] as String).compareTo(a['timestamp'] as String));
+  final latest = hist.first['timestamp'] as String;      // "YYYY-MM-DD HH:MM:SS"
+  final datePart = latest.split(' ').first;              // "YYYY-MM-DD"
+  final ymd = datePart.split('-');                       // [Y, M, D]
+  final formatted =
+      '${ymd[2].padLeft(2, '0')}/${ymd[1].padLeft(2, '0')}/${ymd[0]}';
+
+  return 'Ultima: $formatted — Analisi totali: $total';
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -248,10 +350,10 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    // Logica per i filtri
-                  },
+                     onPressed: _openFilterDialog,
                   style: ElevatedButton.styleFrom(
+                        //minimumSize: const Size.fromHeight(56), // forza altezza a 56px
+                        //padding: const EdgeInsets.symmetric(horizontal: 16),
                     backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(2),
@@ -277,7 +379,7 @@ class _AnagrafichePageState extends State<AnagrafichePage> {
                           final anagrafica = _filteredAnagrafiche[index];
                           return HoverableCard(
                             title: '${anagrafica.nome} ${anagrafica.cognome}',
-                            subtitle: 'ID: ${anagrafica.id}',
+                            subtitle: _buildSubtitle(anagrafica),
                             anagrafica: anagrafica,
                             onRefresh: _fetchAnagrafiche,
                             username: widget.username,

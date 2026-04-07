@@ -11,13 +11,13 @@ dependencies:
     sdk: flutter
   camera: ^0.10.1+1 # Pacchetto base per la fotocamera
   camera_web: ^0.3.5 # Implementazione web della fotocamera
-  path_provider: ^2.0.15
+  #path_provider: ^2.0.15
   model_viewer_plus: ^1.9.0
   #http: ^1.2.2
   uuid: ^4.5.1
-  flutter_webrtc: ^0.9.36 # Controlla l'ultima versione su pub.dev
+  #flutter_webrtc: ^0.9.36 # Controlla l'ultima versione su pub.dev
   video_player: ^2.9.2
-  flutter_vlc_player: ^7.4.2
+  #flutter_vlc_player: ^7.4.2
   screenshot: ^3.0.0
   flutter_mjpeg: ^2.0.4
   universal_html: ^2.2.4
@@ -30,6 +30,12 @@ dependencies:
   #three_dart: ^0.0.5  # Porting di Three.js
   #three_dart_scene: ^0.1.1  # Gestione delle scene e dei modelli 3D
   #flutter_html_to_pdf: ^0.7.0
+  #path_provider: ^2.1.2       # trova la cartella Documenti dell’app :contentReference[oaicite:1]{index=1}
+  open_file:    ^3.3.2        # apre il file con le app native :contentReference[oaicite:2]{index=2}
+  uvccamera: ^0.0.13           # plugin UVC basato su UVCCamera :contentReference[oaicite:1]{index=1}
+  permission_handler: ^11.0.0  # gestione permessi :contentReference[oaicite:2]{index=2}
+  path_provider: ^2.1.5
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter

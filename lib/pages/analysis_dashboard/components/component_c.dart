@@ -137,6 +137,7 @@ class ComponentCState extends State<ComponentC> {
             filteredItems = tempFiltered;
 
             return AlertDialog(
+              backgroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(4),
               ),

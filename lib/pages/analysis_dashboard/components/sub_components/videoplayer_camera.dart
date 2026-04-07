@@ -71,6 +71,7 @@ class _WebRtcCameraGalleryWidgetState extends State<WebRtcCameraGalleryWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          backgroundColor: Colors.white,
           title: const Text("Imposta IP della Telecamera"),
           content: TextField(
             controller: _ipController,

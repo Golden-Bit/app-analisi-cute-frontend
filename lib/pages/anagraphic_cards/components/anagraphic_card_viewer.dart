@@ -104,6 +104,7 @@ class AnagraficaView extends StatelessWidget {
                               children: anagrafica.analysisHistory!.map((analysis) {
                                 final timestamp = analysis['timestamp'] as String;
                                 return Card(
+                                                        color: Colors.white,
                                   elevation: 2,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(2),

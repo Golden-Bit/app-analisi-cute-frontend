@@ -42,7 +42,8 @@ class Anagrafica {
       gender: json['gender'],
       skinTypes: List<String>.from(json['skin_types']),
       issues: List<String>.from(json['issues']),
-      analysisHistory: List<Map<String, dynamic>>.from(json['analysis_history']),
+      analysisHistory:
+          List<Map<String, dynamic>>.from(json['analysis_history'] ?? []),
     );
   }
 
@@ -68,32 +69,39 @@ class AnagraficaApi {
   final String baseUrl;
   final http.Client client;
 
-  AnagraficaApi({this.baseUrl = "https://www.goldbitweb.com/api3", http.Client? client})
-     : client = client ?? http.Client();
+  AnagraficaApi(
+      {this.baseUrl = "https://www.goldbitweb.com/api3", http.Client? client})
+      : client = client ?? http.Client();
   //AnagraficaApi({this.baseUrl = "http://127.0.0.1:8002", http.Client? client})
   //    : client = client ?? http.Client();
 
   // Recupera tutte le anagrafiche per uno specifico utente
-Future<List<Anagrafica>> getAnagrafiche(String username, String password) async {
-  final url = Uri.parse('$baseUrl/anagrafiche?username=$username&password=$password');
-  final response = await client.get(
-    url,
-    headers: {'Content-Type': 'application/json; charset=utf-8'},
-  );
+  Future<List<Anagrafica>> getAnagrafiche(
+      String username, String password) async {
+    final url =
+        Uri.parse('$baseUrl/anagrafiche?username=$username&password=$password');
+    final response = await client.get(
+      url,
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+    );
 
-  if (response.statusCode == 200) {
-    // Utilizza response.bodyBytes per decodificare correttamente in UTF-8
-    final List<dynamic> jsonList = json.decode(utf8.decode(response.bodyBytes));
-    print(jsonList);
-    return jsonList.map((json) => Anagrafica.fromJson(json)).toList();
-  } else {
-    throw Exception('Errore durante il recupero delle anagrafiche: ${response.body}');
+    if (response.statusCode == 200) {
+      // Utilizza response.bodyBytes per decodificare correttamente in UTF-8
+      final List<dynamic> jsonList =
+          json.decode(utf8.decode(response.bodyBytes));
+      print(jsonList);
+      return jsonList.map((json) => Anagrafica.fromJson(json)).toList();
+    } else {
+      throw Exception(
+          'Errore durante il recupero delle anagrafiche: ${response.body}');
+    }
   }
-}
 
   // Crea una nuova anagrafica
-  Future<void> createAnagrafica(String username, String password, Anagrafica anagrafica) async {
-    final url = Uri.parse('$baseUrl/create_anagrafiche?username=$username&password=$password');
+  Future<void> createAnagrafica(
+      String username, String password, Anagrafica anagrafica) async {
+    final url = Uri.parse(
+        '$baseUrl/create_anagrafiche?username=$username&password=$password');
     final response = await client.post(
       url,
       headers: {'Content-Type': 'application/json'},
@@ -101,36 +109,79 @@ Future<List<Anagrafica>> getAnagrafiche(String username, String password) async 
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Errore durante la creazione dell\'anagrafica: ${response.body}');
+      throw Exception(
+          'Errore durante la creazione dell\'anagrafica: ${response.body}');
     }
   }
 
   // Aggiorna un'anagrafica esistente
-  Future<Anagrafica> updateAnagrafica(String username, String password, String id, Anagrafica updatedData) async {
-    final url = Uri.parse('$baseUrl/anagrafiche/$id?username=$username&password=$password');
+  Future<Anagrafica> updateAnagrafica(String username, String password,
+      String id, Anagrafica updatedData) async {
+    final url = Uri.parse(
+        '$baseUrl/anagrafiche/$id?username=$username&password=$password');
     final response = await client.put(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: json.encode(updatedData.toJson()), // Solo i dati aggiornati nel body
+      body:
+          json.encode(updatedData.toJson()), // Solo i dati aggiornati nel body
     );
 
     if (response.statusCode == 200) {
       return Anagrafica.fromJson(json.decode(response.body));
     } else {
-      throw Exception('Errore durante l\'aggiornamento dell\'anagrafica: ${response.body}');
+      throw Exception(
+          'Errore durante l\'aggiornamento dell\'anagrafica: ${response.body}');
     }
   }
 
   // Elimina un'anagrafica esistente
-  Future<void> deleteAnagrafica(String username, String password, String id) async {
-    final url = Uri.parse('$baseUrl/anagrafiche/$id?username=$username&password=$password');
+  Future<void> deleteAnagrafica(
+      String username, String password, String id) async {
+    final url = Uri.parse(
+        '$baseUrl/anagrafiche/$id?username=$username&password=$password');
     final response = await client.delete(
       url,
       headers: {'Content-Type': 'application/json'},
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Errore durante l\'eliminazione dell\'anagrafica: ${response.body}');
+      throw Exception(
+          'Errore durante l\'eliminazione dell\'anagrafica: ${response.body}');
     }
+  }
+
+  // Storico anagrafiche create per utente specifico (admin-only, paginato)
+  Future<Map<String, dynamic>> getAdminUserAnagraficheHistory({
+    required String targetUsername,
+    required String adminUsername,
+    required String adminPassword,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final url =
+        Uri.parse('$baseUrl/admin/users/$targetUsername/anagrafiche_history')
+            .replace(
+      queryParameters: {
+        'admin_username': adminUsername,
+        'admin_password': adminPassword,
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      },
+    );
+
+    final response = await client.get(
+      url,
+      headers: {'Content-Type': 'application/json; charset=utf-8'},
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+          'Errore durante il recupero dello storico anagrafiche: ${response.body}');
+    }
+
+    final decodedBody = utf8.decode(response.bodyBytes);
+    final Map<String, dynamic> payload =
+        json.decode(decodedBody) as Map<String, dynamic>;
+    return Map<String, dynamic>.from(payload['data'] ?? {});
   }
 }

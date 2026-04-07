@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:app_analisi_cute/pages/login/login.dart';
-import 'package:app_analisi_cute/pages/home/home.dart';
+import 'package:app_analisi_cute/pages/login/login_mobile.dart';
+import 'package:app_analisi_cute/pages/home/home_mobile.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
+  
 
   @override
   Widget build(BuildContext context) {

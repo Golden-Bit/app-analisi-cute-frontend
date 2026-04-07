@@ -266,6 +266,7 @@ Future<void> _performAnalysisForZone(String zone) async {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
+            backgroundColor: Colors.white,
             title: const Text("Errore"),
             content: Text("Si è verificato un errore: $e"),
             actions: [
